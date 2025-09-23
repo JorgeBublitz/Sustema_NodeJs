@@ -1,0 +1,131 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  SECRETARY
+  DOCTOR
+  NURSE
+}
+
+enum Room {
+  PS // Pronto Socorro
+  SURGERY // Sala de Cirugia
+  UTI // Unidade de tratamento atendimento constante
+  WARD // Enfermaria
+}
+
+enum Condition {
+  SURGERY
+  REST
+  WAIT
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(SECRETARY)
+  createdAt DateTime @default(now())
+
+  doctor Doctor? @relation("UserDoctor")
+  nurse  Nurse?  @relation("UserNurse")
+}
+
+/// Médicos do sistema
+model Doctor {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @unique
+  crmNumber String
+  crmState  EstadoBR
+  specialty String
+  createdAt DateTime @default(now())
+
+  user         User          @relation("UserDoctor", fields: [userId], references: [id], onDelete: Cascade)
+  appointments Appointment[]
+
+  @@unique([crmNumber, crmState]) // CRM + Estado deve ser único
+}
+
+/// Enfermeiros do sistema
+model Nurse {
+  id          Int      @id @default(autoincrement())
+  userId      Int      @unique
+  createdAt   DateTime @default(now())
+  corenNumber String
+  corenState  EstadoBR
+
+  user         User          @relation("UserNurse", fields: [userId], references: [id], onDelete: Cascade)
+  appointments Appointment[]
+
+  @@unique([corenNumber, corenState])
+}
+
+/// Pacientes do sistema
+model Patient {
+  id        Int       @id @default(autoincrement())
+  name      String
+  email     String?   @unique
+  phone     String?
+  birthDate DateTime
+  condition Condition
+  location  Room
+  createdAt DateTime  @default(now())
+
+  appointments Appointment[]
+}
+
+/// Consultas / Agendamentos
+model Appointment {
+  id       Int      @id @default(autoincrement())
+  dateTime DateTime
+  notes    String?
+
+  doctorId  Int
+  patientId Int
+  nurseId   Int?
+
+  doctor  Doctor  @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  nurse   Nurse?  @relation(fields: [nurseId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+enum EstadoBR {
+  AC
+  AL
+  AP
+  AM
+  BA
+  CE
+  DF
+  ES
+  GO
+  MA
+  MT
+  MS
+  MG
+  PA
+  PB
+  PR
+  PE
+  PI
+  RJ
+  RN
+  RS
+  RO
+  RR
+  SC
+  SP
+  SE
+  TO
+}
