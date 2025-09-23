@@ -1,8 +1,7 @@
 import prisma from "../database/prismaClient";
-import type { Prisma, Role } from "../generated/prisma";
-import bcrypt from "bcrypt"
+import type { Prisma, Role, EstadoBR } from "../generated/prisma";
+import bcrypt from "bcrypt";
 
-// Tipo do usuário com relações
 export type UserWithRelations = Prisma.UserGetPayload<{
     include: { doctor: true; nurse: true }
 }>;
@@ -23,37 +22,23 @@ const userService = {
         });
     },
 
-    async createUser(data: { name: string; email: string; password: string; role: Role }): Promise<UserWithRelations> {
-        // Hash da senha
-        const hashedPassword = await bcrypt.hash(data.password, SALT_ROUNDS);
+    async createUser(data: { name: string; email: string; passwordHash: string; role: Role }): Promise<UserWithRelations> {
+        const hashedPassword = await bcrypt.hash(data.passwordHash, SALT_ROUNDS);
+        const role = data.role.toUpperCase() as Role;
 
-        // Cria o usuário
-        const user = await prisma.user.create({
-            data: { ...data, password: hashedPassword },
-            include: { doctor: true, nurse: true },
+        const user = await prisma.$transaction(async (tx) => {
+            const newUser = await tx.user.create({
+                data: { ...data, passwordHash: hashedPassword, role },
+            });
+
+            if (role === "DOCTOR") {
+                await tx.doctor.create({ data: { userId: newUser.id, crmNumber: "", crmState: "PB", specialty: "" } });
+            } else if (role === "NURSE") {
+                await tx.nurse.create({ data: { userId: newUser.id, corenNumber: "", corenState: "PB" } });
+            }
+
+            return newUser;
         });
-
-        // Cria o registro correspondente se DOCTOR ou NURSE
-        if (data.role === "DOCTOR") {
-            await prisma.doctor.create({
-                data: {
-                    userId: user.id,
-                    crmNumber: "",     // preencher depois
-                    crmState: "PB",    // padrão ou alterar
-                    specialty: "",     // preencher depois
-                },
-            });
-        }
-
-        if (data.role === "NURSE") {
-            await prisma.nurse.create({
-                data: {
-                    userId: user.id,
-                    corenNumber: "",
-                    corenState: "PB"
-                },
-            });
-        }
 
         return prisma.user.findUnique({
             where: { id: user.id },
@@ -63,54 +48,86 @@ const userService = {
 
     async updateUserById(
         id: number,
-        data: { name?: string; email?: string; password?: string; role?: Role }
-    ): Promise<UserWithRelations> {
-        const updateData: any = { ...data };
-
-        // Se senha foi passada, faz hash
-        if (data.password) {
-            updateData.password = await bcrypt.hash(data.password, SALT_ROUNDS);
+        data: {
+            name?: string;
+            email?: string;
+            passwordHash?: string;
+            role?: Role;
+            doctorData?: {
+                crmNumber: string;
+                crmState: EstadoBR;
+                specialty: string;
+            };
+            nurseData?: {
+                corenNumber: string;
+                corenState: EstadoBR;
+            };
         }
+    ): Promise<UserWithRelations> {
+        const role = data.role?.toUpperCase() as Role | undefined;
 
-        const user = await prisma.user.update({
-            where: { id },
-            data: updateData,
-            include: { doctor: true, nurse: true },
-        });
+        const user = await prisma.$transaction(async (tx) => {
+            // Buscar usuário atual com relacionamentos
+            const userBeforeUpdate = await tx.user.findUnique({
+                where: { id },
+                include: { doctor: true, nurse: true },
+            });
 
-        // Se mudou a role, criar ou remover registros correspondentes
-        if (data.role && data.role !== user.role) {
-            if (data.role === "DOCTOR" && !user.doctor) {
-                await prisma.doctor.create({
-                    data: { userId: user.id, crmNumber: "", crmState: "SP", specialty: "" },
+            if (!userBeforeUpdate) throw new Error("User not found");
+
+            const updateData: any = { ...data };
+
+            // Hash da senha se for passada
+            if (data.passwordHash) {
+                updateData.passwordHash = await bcrypt.hash(data.passwordHash, SALT_ROUNDS);
+            }
+
+            // Atualiza o usuário
+            const updatedUser = await tx.user.update({
+                where: { id },
+                data: role ? { ...updateData, role } : updateData,
+            });
+
+            // Remove relacionamentos antigos
+            if (userBeforeUpdate.doctor) await tx.doctor.delete({ where: { id: userBeforeUpdate.doctor.id } });
+            if (userBeforeUpdate.nurse) await tx.nurse.delete({ where: { id: userBeforeUpdate.nurse.id } });
+
+            // Cria novo relacionamento baseado no role
+            if (role === "DOCTOR") {
+                await tx.doctor.create({
+                    data: {
+                        userId: updatedUser.id,
+                        ...(data.doctorData || { crmNumber: "", crmState: "PB", specialty: "" }),
+                    },
+                });
+            } else if (role === "NURSE") {
+                await tx.nurse.create({
+                    data: {
+                        userId: updatedUser.id,
+                        ...(data.nurseData || { corenNumber: "", corenState: "PB" }),
+                    },
                 });
             }
-            // if (data.role === "NURSE" && !user.nurse) {
-            //     await prisma.nurse.create({ data: { id: user. } });
-            // }
-            if (data.role !== "DOCTOR" && user.doctor) {
-                await prisma.doctor.delete({ where: { id: user.doctor.id } });
-            }
-            if (data.role !== "NURSE" && user.nurse) {
-                await prisma.nurse.delete({ where: { id: user.nurse.id } });
-            }
-        }
 
+            return updatedUser;
+        });
+
+        // Retorna usuário atualizado com relacionamentos
         return prisma.user.findUnique({
             where: { id: user.id },
             include: { doctor: true, nurse: true },
         }) as Promise<UserWithRelations>;
     },
 
+
     async deleteUser(id: number): Promise<UserWithRelations> {
         return prisma.user.delete({
-            where: { id },
+            where: { id }, 
             include: { doctor: true, nurse: true },
         });
     },
 
-    // Método adicional: verificar senha
-    async checkPassword(email: string, password: string): Promise<UserWithRelations | null> {
+    async checkPassword(email: string, passwordHash: string): Promise<UserWithRelations | null> {
         const user = await prisma.user.findUnique({
             where: { email },
             include: { doctor: true, nurse: true },
@@ -118,7 +135,7 @@ const userService = {
 
         if (!user) return null;
 
-        const isValid = await bcrypt.compare(password, user.password);
+        const isValid = await bcrypt.compare(passwordHash, user.passwordHash);
         return isValid ? user : null;
     },
 };

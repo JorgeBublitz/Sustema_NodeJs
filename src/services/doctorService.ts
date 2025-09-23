@@ -26,9 +26,12 @@ const doctorService = {
                 userId: data.userId,
                 crmNumber: data.crmNumber,
                 crmState: data.crmState,
-                specialty: data.specialty,
+                specialty: data.specialty
             },
-            include: { user: true, appointments: true },
+            include: {
+                user: true,
+                appointments: true
+            }
         });
     },
 

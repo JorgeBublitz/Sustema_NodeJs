@@ -36,7 +36,7 @@ const patientController = {
 
     async createPatient(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            let { name, email, phone, birthDate, condition, location } = req.body;
+            let { name, email, phone, birthDate, gender, condition, location } = req.body;
 
             // Converte data YYYY-MM-DD ou ISO para Date
             birthDate = new Date(birthDate);
@@ -50,6 +50,7 @@ const patientController = {
                 email,
                 phone,
                 birthDate,
+                gender,
                 condition,
                 location,
             });
@@ -74,7 +75,7 @@ const patientController = {
                 return;
             }
 
-            const { name, email, phone, birthDate, condition, location } = req.body;
+            const { name, email, phone, birthDate, gender, condition, location } = req.body;
 
             let parsedBirthDate: Date | undefined;
             if (birthDate) {
@@ -100,6 +101,7 @@ const patientController = {
                 email,
                 phone,
                 birthDate: parsedBirthDate,
+                gender,
                 condition,
                 location,
             });

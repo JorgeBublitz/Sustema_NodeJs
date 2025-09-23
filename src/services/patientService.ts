@@ -1,5 +1,5 @@
 import prisma from "../database/prismaClient";
-import type { Prisma, Condition, Room } from "../generated/prisma";
+import type { Prisma, Condition, Room, Gender } from "../generated/prisma";
 
 export type PatientWithRelations = Prisma.PatientGetPayload<{
     include: { appointments: true }
@@ -24,6 +24,7 @@ const patientService = {
         email?: string;
         phone?: string;
         birthDate: Date;
+        gender: Gender;
         condition: Condition;
         location: Room;
     }): Promise<PatientWithRelations> {
@@ -33,6 +34,7 @@ const patientService = {
                 email: data.email,
                 phone: data.phone,
                 birthDate: data.birthDate,
+                gender: data.gender,
                 condition: data.condition,
                 location: data.location,
             },
@@ -47,6 +49,7 @@ const patientService = {
             email?: string;
             phone?: string;
             birthDate?: Date;
+            gender?: Gender;
             condition?: Condition;
             location?: Room;
         }

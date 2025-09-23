@@ -17,8 +17,8 @@ enum Role {
 
 enum Room {
   PS // Pronto Socorro
-  SURGERY // Sala de Cirugia
-  UTI // Unidade de tratamento atendimento constante
+  SURGERY // Sala de Cirurgia
+  UTI // Unidade de Tratamento Intensivo
   WARD // Enfermaria
 }
 
@@ -28,16 +28,37 @@ enum Condition {
   WAIT
 }
 
-model User {
-  id        Int      @id @default(autoincrement())
-  name      String
-  email     String   @unique
-  password  String
-  role      Role     @default(SECRETARY)
-  createdAt DateTime @default(now())
+enum AppointmentStatus {
+  SCHEDULED
+  CANCELLED
+  FINISHED
+}
 
-  doctor Doctor? @relation("UserDoctor")
-  nurse  Nurse?  @relation("UserNurse")
+enum AppointmentType {
+  CHECKUP
+  SURGERY
+  FOLLOW_UP
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+/// Usuários do sistema (genérico, podem ser médico, enfermeiro, secretário ou admin)
+model User {
+  id           Int      @id @default(autoincrement())
+  name         String
+  email        String   @unique
+  passwordHash String /// Senha armazenada como hash (bcrypt, argon2, etc.)
+  role         Role     @default(SECRETARY)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  doctor    Doctor?    @relation("UserDoctor")
+  nurse     Nurse?     @relation("UserNurse")
+
+  @@index([email])
 }
 
 /// Médicos do sistema
@@ -48,25 +69,29 @@ model Doctor {
   crmState  EstadoBR
   specialty String
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   user         User          @relation("UserDoctor", fields: [userId], references: [id], onDelete: Cascade)
   appointments Appointment[]
 
   @@unique([crmNumber, crmState]) // CRM + Estado deve ser único
+  @@index([crmNumber])
 }
 
 /// Enfermeiros do sistema
 model Nurse {
   id          Int      @id @default(autoincrement())
   userId      Int      @unique
-  createdAt   DateTime @default(now())
   corenNumber String
   corenState  EstadoBR
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   user         User          @relation("UserNurse", fields: [userId], references: [id], onDelete: Cascade)
   appointments Appointment[]
 
   @@unique([corenNumber, corenState])
+  @@index([corenNumber])
 }
 
 /// Pacientes do sistema
@@ -75,18 +100,23 @@ model Patient {
   name      String
   email     String?   @unique
   phone     String?
+  gender    Gender
   birthDate DateTime
   condition Condition
   location  Room
+  address   String?
   createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   appointments Appointment[]
 }
 
 /// Consultas / Agendamentos
 model Appointment {
-  id       Int      @id @default(autoincrement())
+  id       Int               @id @default(autoincrement())
   dateTime DateTime
+  status   AppointmentStatus @default(SCHEDULED)
+  type     AppointmentType   @default(CHECKUP)
   notes    String?
 
   doctorId  Int
@@ -98,6 +128,9 @@ model Appointment {
   nurse   Nurse?  @relation(fields: [nurseId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([dateTime])
 }
 
 enum EstadoBR {

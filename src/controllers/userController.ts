@@ -5,7 +5,7 @@ const userController = {
     async getAllUsers(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             const users: UserWithRelations[] = await userService.getAllUsers();
-            const sanitized = users.map(({ password, ...rest }) => rest);
+            const sanitized = users.map(({ passwordHash, ...rest }) => rest);
             res.json(sanitized);
         } catch (err) {
             next(err);
@@ -26,7 +26,7 @@ const userController = {
                 return;
             }
 
-            const { password, ...sanitized } = user;
+            const { passwordHash, ...sanitized } = user;
             res.json(sanitized);
         } catch (err) {
             next(err);
@@ -35,10 +35,10 @@ const userController = {
 
     async createUser(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const { name, email, password, role } = req.body;
-            const user: UserWithRelations = await userService.createUser({ name, email, password, role });
+            const { name, email, passwordHash, role } = req.body;
+            const user: UserWithRelations = await userService.createUser({ name, email, passwordHash, role });
 
-            const { password: _, ...sanitized } = user;
+            const { passwordHash: _, ...sanitized } = user;
             res.status(201).json(sanitized);
         } catch (err: any) {
             if (err.code === "P2002") {
@@ -57,10 +57,10 @@ const userController = {
                 return;
             }
 
-            const { name, email, password, role } = req.body;
-            const user: UserWithRelations = await userService.updateUserById(id, { name, email, password, role });
+            const { name, email, passwordHash, role } = req.body;
+            const user: UserWithRelations = await userService.updateUserById(id, { name, email, passwordHash, role });
 
-            const { password: _, ...sanitized } = user;
+            const { passwordHash: _, ...sanitized } = user;
             res.json(sanitized);
         } catch (err: any) {
             if (err.code === "P2025") {
