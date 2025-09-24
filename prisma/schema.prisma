@@ -61,6 +61,8 @@ model User {
   @@index([email])
 }
 
+
+
 /// Médicos do sistema
 model Doctor {
   id        Int      @id @default(autoincrement())

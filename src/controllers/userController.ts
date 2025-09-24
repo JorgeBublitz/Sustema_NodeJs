@@ -35,8 +35,13 @@ const userController = {
 
     async createUser(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const { name, email, passwordHash, role } = req.body;
-            const user: UserWithRelations = await userService.createUser({ name, email, passwordHash, role });
+            const { name, email, password, role } = req.body;
+            const user: UserWithRelations = await userService.createUser({ name, email, password, role });
+
+            if (!password) {
+                res.status(400).json({ message: "Senha é obrigatória." });
+                return;
+            }
 
             const { passwordHash: _, ...sanitized } = user;
             res.status(201).json(sanitized);
@@ -57,8 +62,8 @@ const userController = {
                 return;
             }
 
-            const { name, email, passwordHash, role } = req.body;
-            const user: UserWithRelations = await userService.updateUserById(id, { name, email, passwordHash, role });
+            const { name, email, password, role } = req.body;
+            const user: UserWithRelations = await userService.updateUserById(id, { name, email, password, role });
 
             const { passwordHash: _, ...sanitized } = user;
             res.json(sanitized);

@@ -35,12 +35,13 @@ const appointmentController = {
 
     async createAppointment(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const { dateTime, doctorId, patientId, notes } = req.body;
+            const { dateTime, doctorId, patientId, nurseId, notes } = req.body;
 
             const appointment = await appointmentService.createAppointment({
                 dateTime: new Date(dateTime),
                 doctorId,
                 patientId,
+                nurseId,
                 notes,
             });
 
@@ -64,12 +65,13 @@ const appointmentController = {
                 return;
             }
 
-            const { dateTime, doctorId, patientId, notes } = req.body;
+            const { dateTime, doctorId, patientId, nurseId, notes } = req.body;
 
             const appointment = await appointmentService.updateAppointmentById(id, {
                 dateTime: dateTime ? new Date(dateTime) : undefined,
                 doctorId,
                 patientId,
+                nurseId,
                 notes,
             });
 

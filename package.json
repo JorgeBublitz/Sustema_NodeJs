@@ -10,7 +10,7 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
+  "description": "API REST para gerenciamento de hospital, construída com **Node.js**, **Express**, **Prisma ORM** e **PostgreSQL**.  \r Permite o cadastro e gerenciamento de **usuários, médicos, enfermeiros, pacientes e agendamentos (appointments)**.",
   "dependencies": {
     "@prisma/client": "^6.16.2",
     "bcrypt": "^6.0.0",
