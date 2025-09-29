@@ -1,12 +1,12 @@
 import prisma from "../database/prismaClient";
 import type { Prisma } from "../generated/prisma";
 
-// Tipo com relacionamentos
 export type AppointmentWithRelations = Prisma.AppointmentGetPayload<{
   include: {
-    doctor: { include: { user: true } };
-    nurse: { include: { user: true } };
+    doctors: { include: { doctor: { include: { user: true } } } };
+    nurses: { include: { nurse: { include: { user: true } } } };
     patient: true;
+    secretary: { include: { user: true } };
   };
 }>;
 
@@ -14,9 +14,10 @@ const appointmentService = {
   async getAllAppointments(): Promise<AppointmentWithRelations[]> {
     return prisma.appointment.findMany({
       include: {
-        doctor: { include: { user: true } },
-        nurse: { include: { user: true } },
+        doctors: { include: { doctor: { include: { user: true } } } },
+        nurses: { include: { nurse: { include: { user: true } } } },
         patient: true,
+        secretary: { include: { user: true } },
       },
     });
   },
@@ -25,82 +26,85 @@ const appointmentService = {
     return prisma.appointment.findUnique({
       where: { id },
       include: {
-        doctor: { include: { user: true } },
-        nurse: { include: { user: true } },
+        doctors: { include: { doctor: { include: { user: true } } } },
+        nurses: { include: { nurse: { include: { user: true } } } },
         patient: true,
+        secretary: { include: { user: true } },
       },
     });
   },
 
   async createAppointment(data: {
     dateTime: Date;
-    doctorId: number;
+    doctorIds: number[];
     patientId: number;
-    nurseId?: number;
+    nurseIds?: number[];
     notes?: string;
+    secretaryId?: number;
   }): Promise<AppointmentWithRelations> {
-    // Valida nurseId
-    if (data.nurseId !== undefined) {
-      const nurseExists = await prisma.nurse.findUnique({ where: { id: data.nurseId } });
-      if (!nurseExists) {
-        throw new Error(`Nurse with ID ${data.nurseId} does not exist.`);
-      }
-    }
-
-    return prisma.appointment.create({
+    const appointment = await prisma.appointment.create({
       data: {
         dateTime: data.dateTime,
-        doctorId: data.doctorId,
         patientId: data.patientId,
-        nurseId: data.nurseId,
+        secretaryId: data.secretaryId,
         notes: data.notes,
+        doctors: { create: data.doctorIds.map((doctorId) => ({ doctorId })) },
+        nurses: data.nurseIds
+          ? { create: data.nurseIds.map((nurseId) => ({ nurseId })) }
+          : undefined,
       },
       include: {
-        doctor: { include: { user: true } },
-        nurse: { include: { user: true } },
+        doctors: { include: { doctor: { include: { user: true } } } },
+        nurses: { include: { nurse: { include: { user: true } } } },
         patient: true,
+        secretary: { include: { user: true } },
       },
     });
+
+    return this.getAppointmentById(appointment.id) as Promise<AppointmentWithRelations>;
   },
 
   async updateAppointmentById(
     id: number,
     data: {
       dateTime?: Date;
-      doctorId?: number;
+      doctorIds?: number[];
       patientId?: number;
-      nurseId?: number;
+      nurseIds?: number[];
       notes?: string;
+      secretaryId?: number;
     }
   ): Promise<AppointmentWithRelations> {
-    // Valida nurseId
-    if (data.nurseId !== undefined) {
-      const nurseExists = await prisma.nurse.findUnique({ where: { id: data.nurseId } });
-      if (!nurseExists) {
-        throw new Error(`Nurse with ID ${data.nurseId} does not exist.`);
-      }
-    }
-
-    return prisma.appointment.update({
+    await prisma.appointment.update({
       where: { id },
-      data,
-      include: {
-        doctor: { include: { user: true } },
-        nurse: { include: { user: true } },
-        patient: true,
+      data: {
+        dateTime: data.dateTime,
+        patientId: data.patientId,
+        secretaryId: data.secretaryId,
+        notes: data.notes,
+        doctors: data.doctorIds
+          ? {
+            deleteMany: {},
+            create: data.doctorIds.map((doctorId) => ({ doctorId })),
+          }
+          : undefined,
+        nurses: data.nurseIds
+          ? {
+            deleteMany: {},
+            create: data.nurseIds.map((nurseId) => ({ nurseId })),
+          }
+          : undefined,
       },
     });
+
+    return this.getAppointmentById(id) as Promise<AppointmentWithRelations>;
   },
 
   async deleteAppointment(id: number): Promise<AppointmentWithRelations> {
-    return prisma.appointment.delete({
-      where: { id },
-      include: {
-        doctor: { include: { user: true } },
-        nurse: { include: { user: true } },
-        patient: true,
-      },
-    });
+    const appointment = await this.getAppointmentById(id);
+    if (!appointment) throw new Error(`Appointment with ID ${id} not found.`);
+    await prisma.appointment.delete({ where: { id } });
+    return appointment;
   },
 };
 

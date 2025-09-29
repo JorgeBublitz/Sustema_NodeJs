@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import patientService, { PatientWithRelations } from "../services/patientService";
-import { Condition, Room } from "../generated/prisma";
+import { PatientStatus, Department } from "../generated/prisma";
 
 const patientController = {
     async getAllPatient(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -36,7 +36,7 @@ const patientController = {
 
     async createPatient(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            let { name, email, phone, birthDate, gender, condition, location } = req.body;
+            let { name, age, email, phone, gender, birthDate, address, allergy, drug, condition, location } = req.body;
 
             // Converte data YYYY-MM-DD ou ISO para Date
             birthDate = new Date(birthDate);
@@ -47,10 +47,14 @@ const patientController = {
 
             const patient: PatientWithRelations = await patientService.createPatient({
                 name,
+                age,
                 email,
                 phone,
-                birthDate,
                 gender,
+                birthDate,
+                address,
+                allergy,
+                drug,
                 condition,
                 location,
             });
@@ -86,12 +90,12 @@ const patientController = {
                 }
             }
 
-            if (condition && !Object.values(Condition).includes(condition)) {
+            if (condition && !Object.values(PatientStatus).includes(condition)) {
                 res.status(400).json({ message: "Condition inválido. Valores permitidos: SURGERY, REST, WAIT." });
                 return;
             }
 
-            if (location && !Object.values(Room).includes(location)) {
+            if (location && !Object.values(Department).includes(location)) {
                 res.status(400).json({ message: "Room inválido. Valores permitidos: PS, SURGERY, UTI, WARD." });
                 return;
             }

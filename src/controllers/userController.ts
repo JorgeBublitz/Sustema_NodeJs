@@ -5,7 +5,7 @@ const userController = {
     async getAllUsers(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             const users: UserWithRelations[] = await userService.getAllUsers();
-            const sanitized = users.map(({ passwordHash, ...rest }) => rest);
+            const sanitized = users.map(({ password, ...rest }) => rest);
             res.json(sanitized);
         } catch (err) {
             next(err);
@@ -26,7 +26,7 @@ const userController = {
                 return;
             }
 
-            const { passwordHash, ...sanitized } = user;
+            const { password, ...sanitized } = user;
             res.json(sanitized);
         } catch (err) {
             next(err);
@@ -35,15 +35,15 @@ const userController = {
 
     async createUser(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const { name, email, password, role } = req.body;
-            const user: UserWithRelations = await userService.createUser({ name, email, password, role });
+            const { name, age, gender, email, password, role } = req.body;
+            const user: UserWithRelations = await userService.createUser({ name, age, gender, email, password, role });
 
             if (!password) {
                 res.status(400).json({ message: "Senha é obrigatória." });
                 return;
             }
 
-            const { passwordHash: _, ...sanitized } = user;
+            const { password: _, ...sanitized } = user;
             res.status(201).json(sanitized);
         } catch (err: any) {
             if (err.code === "P2002") {
@@ -65,7 +65,7 @@ const userController = {
             const { name, email, password, role } = req.body;
             const user: UserWithRelations = await userService.updateUserById(id, { name, email, password, role });
 
-            const { passwordHash: _, ...sanitized } = user;
+            const { password: _, ...sanitized } = user;
             res.json(sanitized);
         } catch (err: any) {
             if (err.code === "P2025") {

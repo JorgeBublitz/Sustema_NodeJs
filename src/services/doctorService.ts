@@ -1,5 +1,6 @@
+import { WorkStatus } from './../generated/prisma/index.d';
 import prisma from "../database/prismaClient";
-import type { EstadoBR, Prisma } from "../generated/prisma";
+import type { StateBR, Prisma, Department } from "../generated/prisma";
 
 // Tipo com relacionamentos
 export type DoctorWithRelations = Prisma.DoctorGetPayload<{
@@ -20,13 +21,15 @@ const doctorService = {
         });
     },
 
-    async createDoctor(data: { userId: number; crmNumber: string; crmState: EstadoBR; specialty: string }): Promise<DoctorWithRelations> {
+    async createDoctor(data: { userId: number; workStatus: WorkStatus; crmNumber: string; crmState: StateBR; specialty: string; department: Department }): Promise<DoctorWithRelations> {
         return prisma.doctor.create({
             data: {
                 userId: data.userId,
+                workStatus: data.workStatus,
                 crmNumber: data.crmNumber,
                 crmState: data.crmState,
-                specialty: data.specialty
+                specialty: data.specialty,
+                department: data.department
             },
             include: {
                 user: true,
@@ -39,7 +42,7 @@ const doctorService = {
         id: number,
         data: {
             crmNumber: string,
-            crmState: EstadoBR,
+            crmState: StateBR,
             specialty: string
         }
     ): Promise<DoctorWithRelations> {

@@ -8,6 +8,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+/// Papéis de usuário do sistema
 enum Role {
   ADMIN
   SECRETARY
@@ -15,82 +16,137 @@ enum Role {
   NURSE
 }
 
-enum Room {
-  PS // Pronto Socorro
-  SURGERY // Sala de Cirurgia
-  UTI // Unidade de Tratamento Intensivo
-  WARD // Enfermaria
-}
-
-enum Condition {
+/// Departamentos do hospital
+enum Department {
+  EMERGENCY
   SURGERY
-  REST
-  WAIT
+  ICU
+  WARD
 }
 
+/// Estado atual do paciente
+enum PatientStatus {
+  IN_SURGERY
+  REST
+  WAITING
+}
+
+/// Status de agendamento
 enum AppointmentStatus {
   SCHEDULED
   CANCELLED
   FINISHED
 }
 
+/// Tipo de consulta
 enum AppointmentType {
   CHECKUP
   SURGERY
   FOLLOW_UP
 }
 
+/// Gênero da pessoa
 enum Gender {
   MALE
   FEMALE
 }
 
-/// Usuários do sistema (genérico, podem ser médico, enfermeiro, secretário ou admin)
-model User {
-  id           Int      @id @default(autoincrement())
-  name         String
-  email        String   @unique
-  passwordHash String /// Senha armazenada como hash (bcrypt, argon2, etc.)
-  role         Role     @default(SECRETARY)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  doctor    Doctor?    @relation("UserDoctor")
-  nurse     Nurse?     @relation("UserNurse")
-
-  @@index([email])
+/// Nível do enfermeiro
+enum NurseLevel {
+  ASSISTANT
+  TECHNICIAN
+  GRADUATE
 }
 
+/// Turnos de trabalho
+enum Shift {
+  MORNING
+  AFTERNOON
+  NIGHT
+}
 
+/// Situação do profissional
+enum WorkStatus {
+  WORKING
+  VACATION
+  NOT_WORKING
+  ON_LEAVE
+  SICK_LEAVE
+}
 
-/// Médicos do sistema
-model Doctor {
-  id        Int      @id @default(autoincrement())
-  userId    Int      @unique
-  crmNumber String
-  crmState  EstadoBR
-  specialty String
+/// Usuários do sistema (médico, enfermeiro, secretário ou admin)
+model User {
+  id       Int    @id @default(autoincrement())
+  name     String
+  age      Int
+  gender   Gender
+  email    String @unique
+  password String
+  role     Role   @default(SECRETARY)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user         User          @relation("UserDoctor", fields: [userId], references: [id], onDelete: Cascade)
-  appointments Appointment[]
+  doctor    Doctor?    @relation("UserDoctor")
+  nurse     Nurse?     @relation("UserNurse")
+  secretary Secretary? @relation("UserSecretary")
+}
+
+/// Secretários (podem marcar consultas)
+model Secretary {
+  id     Int  @id @default(autoincrement())
+  userId Int  @unique
+  user   User @relation("UserSecretary", fields: [userId], references: [id], onDelete: Cascade)
+
+  workStatus WorkStatus @default(NOT_WORKING)
+  shift      Shift
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  appointments Appointment[] // consultas que marcou
+}
+
+/// Médicos do sistema
+model Doctor {
+  id     Int  @id @default(autoincrement())
+  userId Int  @unique
+  user   User @relation("UserDoctor", fields: [userId], references: [id], onDelete: Cascade)
+
+  workStatus WorkStatus @default(NOT_WORKING)
+  crmNumber  String
+  crmState   StateBR
+  specialty  String
+  department Department
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  appointments      Appointment[]
+  AppointmentDoctor AppointmentDoctor[]
 
   @@unique([crmNumber, crmState]) // CRM + Estado deve ser único
-  @@index([crmNumber])
 }
 
 /// Enfermeiros do sistema
 model Nurse {
-  id          Int      @id @default(autoincrement())
-  userId      Int      @unique
-  corenNumber String
-  corenState  EstadoBR
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id     Int  @id @default(autoincrement())
+  userId Int  @unique
+  user   User @relation("UserNurse", fields: [userId], references: [id], onDelete: Cascade)
 
-  user         User          @relation("UserNurse", fields: [userId], references: [id], onDelete: Cascade)
-  appointments Appointment[]
+  workStatus     WorkStatus @default(NOT_WORKING)
+  corenNumber    String
+  corenState     StateBR
+  level          NurseLevel
+  department     Department
+  experience     Int
+  specialization String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  appointments     Appointment[]
+  AppointmentNurse AppointmentNurse[]
 
   @@unique([corenNumber, corenState])
   @@index([corenNumber])
@@ -98,19 +154,48 @@ model Nurse {
 
 /// Pacientes do sistema
 model Patient {
-  id        Int       @id @default(autoincrement())
+  id Int @id @default(autoincrement())
+
   name      String
-  email     String?   @unique
-  phone     String?
+  age       Int
+  email     String?  @unique
+  phone     String?  @unique
   gender    Gender
   birthDate DateTime
-  condition Condition
-  location  Room
   address   String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+
+  allergy String?
+  drug    String?
+
+  condition PatientStatus
+  location  Department
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   appointments Appointment[]
+}
+
+/// Tabela de junção entre Appointment e Nurse
+model AppointmentNurse {
+  appointmentId Int
+  nurseId       Int
+
+  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  nurse       Nurse       @relation(fields: [nurseId], references: [id], onDelete: Cascade)
+
+  @@id([appointmentId, nurseId])
+}
+
+/// Tabela de junção entre Appointment e Doctor
+model AppointmentDoctor {
+  appointmentId Int
+  doctorId      Int
+
+  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  doctor      Doctor      @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+
+  @@id([appointmentId, doctorId])
 }
 
 /// Consultas / Agendamentos
@@ -121,21 +206,27 @@ model Appointment {
   type     AppointmentType   @default(CHECKUP)
   notes    String?
 
-  doctorId  Int
-  patientId Int
-  nurseId   Int?
+  patientId   Int
+  secretaryId Int?
 
-  doctor  Doctor  @relation(fields: [doctorId], references: [id], onDelete: Cascade)
-  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  nurse   Nurse?  @relation(fields: [nurseId], references: [id], onDelete: Cascade)
+  patient   Patient    @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  secretary Secretary? @relation(fields: [secretaryId], references: [id], onDelete: SetNull)
+
+  nurses  AppointmentNurse[]
+  doctors AppointmentDoctor[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  Doctor    Doctor?  @relation(fields: [doctorId], references: [id])
+  doctorId  Int?
+  Nurse     Nurse?   @relation(fields: [nurseId], references: [id])
+  nurseId   Int?
 
   @@index([dateTime])
 }
 
-enum EstadoBR {
+/// Estados do Brasil (para CRM/COREN)
+enum StateBR {
   AC
   AL
   AP

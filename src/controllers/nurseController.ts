@@ -1,3 +1,4 @@
+import { WorkStatus } from './../generated/prisma/index.d';
 import { Request, Response, NextFunction } from "express";
 import nurseService, { NurseWithRelations } from "../services/nurseService";
 
@@ -35,12 +36,17 @@ const nurseController = {
 
     async createNurse(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const { userId, corenNumber, corenState } = req.body;
+            const { userId, workStatus, corenNumber, corenState, level, department, experience, specialization } = req.body;
 
             const nurse: NurseWithRelations = await nurseService.createNurse({
                 userId,
+                workStatus,
                 corenNumber,
                 corenState,
+                level,
+                department,
+                experience,
+                specialization,
             });
 
             res.status(201).json(nurse);

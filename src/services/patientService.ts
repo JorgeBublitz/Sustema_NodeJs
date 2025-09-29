@@ -1,5 +1,5 @@
 import prisma from "../database/prismaClient";
-import type { Prisma, Condition, Room, Gender } from "../generated/prisma";
+import type { Prisma, PatientStatus, Department, Gender } from "../generated/prisma";
 
 export type PatientWithRelations = Prisma.PatientGetPayload<{
     include: { appointments: true }
@@ -21,20 +21,29 @@ const patientService = {
 
     async createPatient(data: {
         name: string;
+        age: number;
         email?: string;
         phone?: string;
-        birthDate: Date;
         gender: Gender;
-        condition: Condition;
-        location: Room;
+        birthDate: Date;
+        address: string;
+        allergy: string;
+        drug: string;
+
+        condition: PatientStatus;
+        location: Department;
     }): Promise<PatientWithRelations> {
         return prisma.patient.create({
             data: {
                 name: data.name,
+                age: data.age,
                 email: data.email,
                 phone: data.phone,
-                birthDate: data.birthDate,
                 gender: data.gender,
+                birthDate: data.birthDate,
+                address: data.address,
+                allergy: data.allergy,
+                drug: data.drug,
                 condition: data.condition,
                 location: data.location,
             },
@@ -50,8 +59,8 @@ const patientService = {
             phone?: string;
             birthDate?: Date;
             gender?: Gender;
-            condition?: Condition;
-            location?: Room;
+            condition?: PatientStatus;
+            location?: Department;
         }
     ): Promise<PatientWithRelations> {
         return prisma.patient.update({

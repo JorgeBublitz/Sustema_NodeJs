@@ -1,5 +1,5 @@
 import prisma from "../database/prismaClient";
-import type { Prisma, Role, EstadoBR } from "../generated/prisma";
+import { type Prisma, type Role, type StateBR, type Gender, Department, NurseLevel, WorkStatus } from "../generated/prisma";
 import bcrypt from "bcrypt";
 
 export type UserWithRelations = Prisma.UserGetPayload<{
@@ -9,14 +9,14 @@ export type UserWithRelations = Prisma.UserGetPayload<{
 const SALT_ROUNDS = 10;
 
 const userService = {
-  // Pegar todos os usuários
+  // Buscar todos usuários
   async getAllUsers(): Promise<UserWithRelations[]> {
     return prisma.user.findMany({
       include: { doctor: true, nurse: true },
     });
   },
 
-  // Pegar usuário por ID
+  // Buscar usuário por ID
   async getUserById(id: number): Promise<UserWithRelations | null> {
     return prisma.user.findUnique({
       where: { id },
@@ -24,32 +24,54 @@ const userService = {
     });
   },
 
-  // Criar usuário
-  async createUser(data: { name: string; email: string; password: string; role: Role }): Promise<UserWithRelations> {
+  // Criar usuário com hash de senha
+  async createUser(data: {
+    name: string;
+    age: number;
+    gender: Gender;
+    email: string;
+    password: string;
+    role: Role
+  }): Promise<UserWithRelations> {
     if (!data.password || typeof data.password !== "string") {
       throw new Error("Senha é obrigatória e deve ser uma string");
     }
 
-    const hashedPassword = await bcrypt.hash(data.password, SALT_ROUNDS);
-    const role = data.role.toUpperCase() as Role;
+    const passwordHash = await bcrypt.hash(data.password, SALT_ROUNDS);
 
     const user = await prisma.$transaction(async (tx) => {
       const newUser = await tx.user.create({
         data: {
           name: data.name,
+          age: data.age,
+          gender: data.gender,
           email: data.email,
-          passwordHash: hashedPassword, // salva o hash
-          role,
+          password: passwordHash,
+          role: data.role,
         },
       });
 
-      if (role === "DOCTOR") {
+      // Cria Doctor ou Nurse conforme role
+      if (data.role === "DOCTOR") {
         await tx.doctor.create({
-          data: { userId: newUser.id, crmNumber: "", crmState: "PB", specialty: "" },
+          data: {
+            userId: newUser.id,
+            crmNumber: "TEMP",
+            crmState: "PB",
+            specialty: "General",
+            department: "EMERGENCY",
+          },
         });
-      } else if (role === "NURSE") {
+      } else if (data.role === "NURSE") {
         await tx.nurse.create({
-          data: { userId: newUser.id, corenNumber: "", corenState: "PB" },
+          data: {
+            userId: newUser.id,
+            corenNumber: "TEMP",
+            corenState: "PB",
+            level: "ASSISTANT",
+            department: "WARD",
+            experience: 0,
+          },
         });
       }
 
@@ -67,15 +89,15 @@ const userService = {
     id: number,
     data: {
       name?: string;
+      age?: number;
+      gender?: Gender;
       email?: string;
       password?: string;
       role?: Role;
-      doctorData?: { crmNumber: string; crmState: EstadoBR; specialty: string };
-      nurseData?: { corenNumber: string; corenState: EstadoBR };
+      doctorData?: { crmNumber: string; crmState: StateBR; specialty: string; department: Department; workStatus: WorkStatus };
+      nurseData?: { corenNumber: string; corenState: StateBR; level: NurseLevel; department: Department; experience: number; workState: WorkStatus };
     }
   ): Promise<UserWithRelations> {
-    const role = data.role?.toUpperCase() as Role | undefined;
-
     const user = await prisma.$transaction(async (tx) => {
       const userBeforeUpdate = await tx.user.findUnique({
         where: { id },
@@ -86,38 +108,40 @@ const userService = {
 
       const updateData: any = { ...data };
 
-      // Se houver senha nova, gera hash
       if (data.password) {
-        updateData.passwordHash = await bcrypt.hash(data.password, SALT_ROUNDS);
+        updateData.password = await bcrypt.hash(data.password, SALT_ROUNDS);
       }
 
-      // Remove o campo password antes de atualizar, Prisma não conhece
-      delete updateData.password;
+      delete updateData.doctorData;
+      delete updateData.nurseData;
 
       const updatedUser = await tx.user.update({
         where: { id },
-        data: role ? { ...updateData, role } : updateData,
+        data: updateData,
       });
 
-      // Remove relacionamentos antigos
-      if (userBeforeUpdate.doctor) await tx.doctor.delete({ where: { id: userBeforeUpdate.doctor.id } });
-      if (userBeforeUpdate.nurse) await tx.nurse.delete({ where: { id: userBeforeUpdate.nurse.id } });
+      // Atualiza Doctor se existir
+      if (data.role === "DOCTOR" && data.doctorData) {
+        if (userBeforeUpdate.doctor) {
+          await tx.doctor.update({
+            where: { id: userBeforeUpdate.doctor.id },
+            data: data.doctorData,
+          });
+        } else {
+          await tx.doctor.create({ data: { userId: updatedUser.id, ...data.doctorData } });
+        }
+      }
 
-      // Cria novo relacionamento baseado no role
-      if (role === "DOCTOR") {
-        await tx.doctor.create({
-          data: {
-            userId: updatedUser.id,
-            ...(data.doctorData || { crmNumber: "", crmState: "PB", specialty: "" }),
-          },
-        });
-      } else if (role === "NURSE") {
-        await tx.nurse.create({
-          data: {
-            userId: updatedUser.id,
-            ...(data.nurseData || { corenNumber: "", corenState: "PB" }),
-          },
-        });
+      // Atualiza Nurse se existir
+      if (data.role === "NURSE" && data.nurseData) {
+        if (userBeforeUpdate.nurse) {
+          await tx.nurse.update({
+            where: { id: userBeforeUpdate.nurse.id },
+            data: data.nurseData,
+          });
+        } else {
+          await tx.nurse.create({ data: { userId: updatedUser.id, ...data.nurseData } });
+        }
       }
 
       return updatedUser;
@@ -146,7 +170,7 @@ const userService = {
 
     if (!user) return null;
 
-    const isValid = await bcrypt.compare(password, user.passwordHash);
+    const isValid = await bcrypt.compare(password, user.password);
     return isValid ? user : null;
   },
 };

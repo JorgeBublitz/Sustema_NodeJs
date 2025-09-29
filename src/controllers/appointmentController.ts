@@ -35,21 +35,22 @@ const appointmentController = {
 
     async createAppointment(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const { dateTime, doctorId, patientId, nurseId, notes } = req.body;
+            const { dateTime, doctorIds, patientId, nurseIds, secretaryId, notes } = req.body;
 
+            // Passando arrays de IDs para médicos e enfermeiros
             const appointment = await appointmentService.createAppointment({
                 dateTime: new Date(dateTime),
-                doctorId,
+                doctorIds,
                 patientId,
-                nurseId,
+                nurseIds,
+                secretaryId,
                 notes,
             });
 
             res.status(201).json(appointment);
         } catch (err: any) {
             if (err.code === "P2003") {
-                // violação de chave estrangeira (ex: doctorId ou patientId inválidos)
-                res.status(400).json({ message: "Doutor ou paciente informado não existe." });
+                res.status(400).json({ message: "Doutor, paciente, enfermeiro ou secretário informado não existe." });
             } else {
                 next(err);
             }
@@ -65,13 +66,14 @@ const appointmentController = {
                 return;
             }
 
-            const { dateTime, doctorId, patientId, nurseId, notes } = req.body;
+            const { dateTime, doctorIds, patientId, nurseIds, secretaryId, notes } = req.body;
 
             const appointment = await appointmentService.updateAppointmentById(id, {
                 dateTime: dateTime ? new Date(dateTime) : undefined,
-                doctorId,
+                doctorIds,
                 patientId,
-                nurseId,
+                nurseIds,
+                secretaryId,
                 notes,
             });
 
@@ -80,7 +82,7 @@ const appointmentController = {
             if (err.code === "P2025") {
                 res.status(404).json({ message: "Agendamento não encontrado." });
             } else if (err.code === "P2003") {
-                res.status(400).json({ message: "Doutor ou paciente informado não existe." });
+                res.status(400).json({ message: "Doutor, paciente, enfermeiro ou secretário informado não existe." });
             } else {
                 next(err);
             }

@@ -35,13 +35,15 @@ const doctorController = {
 
     async createDoctor(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const { userId, crmNumber, crmState, specialty } = req.body;
+            const { userId, workStatus, crmNumber, crmState, specialty, department } = req.body;
 
             const doctor: DoctorWithRelations = await doctorService.createDoctor({
                 userId,
+                workStatus,
                 crmNumber,
                 crmState,
                 specialty,
+                department
             });
 
             res.status(201).json(doctor);
