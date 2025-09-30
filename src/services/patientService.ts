@@ -59,6 +59,7 @@ const patientService = {
             phone?: string;
             birthDate?: Date;
             gender?: Gender;
+            address?: string;
             condition?: PatientStatus;
             location?: Department;
         }

@@ -5,12 +5,16 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
-    "dev": "nodemon src/index.ts"
+    "dev": "nodemon src/index.ts",
+    "seed": "prisma db seed"
+  },
+  "prisma": {
+    "seed": "ts-node src/prisma/seed.ts"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "API REST para gerenciamento de hospital, construída com **Node.js**, **Express**, **Prisma ORM** e **PostgreSQL**.  \r Permite o cadastro e gerenciamento de **usuários, médicos, enfermeiros, pacientes e agendamentos (appointments)**.",
+  "description": "API REST para gerenciamento hospitalar, construída com Node.js, Express, Prisma e PostgreSQL. Permite cadastro e gerenciamento completo de usuários, médicos, enfermeiros, secretários, pacientes e agendamentos.",
   "dependencies": {
     "@prisma/client": "^6.16.2",
     "@types/swagger-jsdoc": "^6.0.4",

@@ -70,9 +70,9 @@ const nurseController = {
                 return;
             }
 
-            const { corenNumber, corenState } = req.body;
+            const { corenNumber, corenState, workStatus, level, department, experience, specialization } = req.body;
 
-            const nurse: NurseWithRelations = await nurseService.updateNurseById(id, { corenNumber, corenState });
+            const nurse: NurseWithRelations = await nurseService.updateNurseById(id, { corenNumber, corenState, workStatus, level, department, experience, specialization });
             res.json(nurse);
         } catch (err: any) {
             if (err.code === "P2025") {

@@ -79,7 +79,7 @@ const patientController = {
                 return;
             }
 
-            const { name, email, phone, birthDate, gender, condition, location } = req.body;
+            const { name, email, phone, birthDate, address, gender, condition, location } = req.body;
 
             let parsedBirthDate: Date | undefined;
             if (birthDate) {
@@ -105,6 +105,7 @@ const patientController = {
                 email,
                 phone,
                 birthDate: parsedBirthDate,
+                address,
                 gender,
                 condition,
                 location,

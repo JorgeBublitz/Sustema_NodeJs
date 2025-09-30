@@ -1,6 +1,5 @@
-import { WorkStatus } from './../generated/prisma/index.d';
 import prisma from "../database/prismaClient";
-import type { StateBR, Prisma, Department } from "../generated/prisma";
+import type { StateBR, Prisma, Department, WorkStatus } from "../generated/prisma";
 
 // Tipo com relacionamentos
 export type DoctorWithRelations = Prisma.DoctorGetPayload<{
@@ -43,7 +42,9 @@ const doctorService = {
         data: {
             crmNumber: string,
             crmState: StateBR,
-            specialty: string
+            specialty: string,
+            workStatus: WorkStatus,
+            department: Department
         }
     ): Promise<DoctorWithRelations> {
         return prisma.doctor.update({

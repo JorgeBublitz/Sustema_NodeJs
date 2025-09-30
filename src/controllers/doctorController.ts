@@ -1,3 +1,4 @@
+import { WorkStatus, Department } from './../generated/prisma/index.d';
 import { Request, Response, NextFunction } from "express";
 import doctorService, { DoctorWithRelations } from "../services/doctorService";
 
@@ -67,9 +68,9 @@ const doctorController = {
                 return;
             }
 
-            const { crmNumber, crmState, specialty } = req.body;
+            const { crmNumber, crmState, specialty, workStatus, department } = req.body;
 
-            const doctor: DoctorWithRelations = await doctorService.updateDoctorById(id, { crmNumber, crmState, specialty });
+            const doctor: DoctorWithRelations = await doctorService.updateDoctorById(id, { crmNumber, crmState, specialty, workStatus, department });
             res.json(doctor);
         } catch (err: any) {
             if (err.code === "P2025") {

@@ -1,9 +1,10 @@
+import { Shift } from './../generated/prisma/index.d';
 import prisma from "../database/prismaClient";
 import { type Prisma, type Role, type StateBR, type Gender, Department, NurseLevel, WorkStatus } from "../generated/prisma";
 import bcrypt from "bcrypt";
 
 export type UserWithRelations = Prisma.UserGetPayload<{
-  include: { doctor: true; nurse: true };
+  include: { doctor: true; nurse: true, secretary: true };
 }>;
 
 const SALT_ROUNDS = 10;
@@ -12,7 +13,7 @@ const userService = {
   // Buscar todos usuários
   async getAllUsers(): Promise<UserWithRelations[]> {
     return prisma.user.findMany({
-      include: { doctor: true, nurse: true },
+      include: { doctor: true, nurse: true, secretary: true },
     });
   },
 
@@ -20,7 +21,7 @@ const userService = {
   async getUserById(id: number): Promise<UserWithRelations | null> {
     return prisma.user.findUnique({
       where: { id },
-      include: { doctor: true, nurse: true },
+      include: { doctor: true, nurse: true, secretary: true },
     });
   },
 
@@ -56,6 +57,7 @@ const userService = {
         await tx.doctor.create({
           data: {
             userId: newUser.id,
+            workStatus: "NOT_WORKING",
             crmNumber: "TEMP",
             crmState: "PB",
             specialty: "General",
@@ -66,11 +68,20 @@ const userService = {
         await tx.nurse.create({
           data: {
             userId: newUser.id,
+            workStatus: "NOT_WORKING",
             corenNumber: "TEMP",
             corenState: "PB",
             level: "ASSISTANT",
             department: "WARD",
             experience: 0,
+          },
+        });
+      } else if (data.role === "SECRETARY") {
+        await tx.secretary.create({
+          data: {
+            userId: newUser.id,
+            workStatus: "NOT_WORKING",
+            shift: "MORNING",
           },
         });
       }
@@ -80,7 +91,7 @@ const userService = {
 
     return prisma.user.findUnique({
       where: { id: user.id },
-      include: { doctor: true, nurse: true },
+      include: { doctor: true, nurse: true, secretary: true },
     }) as Promise<UserWithRelations>;
   },
 
@@ -95,52 +106,107 @@ const userService = {
       password?: string;
       role?: Role;
       doctorData?: { crmNumber: string; crmState: StateBR; specialty: string; department: Department; workStatus: WorkStatus };
-      nurseData?: { corenNumber: string; corenState: StateBR; level: NurseLevel; department: Department; experience: number; workState: WorkStatus };
+      nurseData?: { corenNumber: string; corenState: StateBR; level: NurseLevel; department: Department; experience: number; workStatus: WorkStatus };
+      secretaryData?: { workStatus: WorkStatus, shift: Shift };
     }
   ): Promise<UserWithRelations> {
     const user = await prisma.$transaction(async (tx) => {
       const userBeforeUpdate = await tx.user.findUnique({
         where: { id },
-        include: { doctor: true, nurse: true },
+        include: { doctor: true, nurse: true, secretary: true },
       });
 
       if (!userBeforeUpdate) throw new Error("Usuário não encontrado");
 
       const updateData: any = { ...data };
 
+      // Se tem senha nova → gera hash
       if (data.password) {
         updateData.password = await bcrypt.hash(data.password, SALT_ROUNDS);
       }
 
+      // remove dados extras para não passar pro update de user
       delete updateData.doctorData;
       delete updateData.nurseData;
+      delete updateData.secretaryData;
 
       const updatedUser = await tx.user.update({
         where: { id },
         data: updateData,
       });
 
-      // Atualiza Doctor se existir
-      if (data.role === "DOCTOR" && data.doctorData) {
+      // 🔥 Se mudou o role, limpa as entidades antigas
+      if (data.role && data.role !== userBeforeUpdate.role) {
         if (userBeforeUpdate.doctor) {
-          await tx.doctor.update({
-            where: { id: userBeforeUpdate.doctor.id },
-            data: data.doctorData,
-          });
-        } else {
-          await tx.doctor.create({ data: { userId: updatedUser.id, ...data.doctorData } });
+          await tx.doctor.delete({ where: { id: userBeforeUpdate.doctor.id } });
+        }
+        if (userBeforeUpdate.nurse) {
+          await tx.nurse.delete({ where: { id: userBeforeUpdate.nurse.id } });
+        }
+        if (userBeforeUpdate.secretary) {
+          await tx.secretary.delete({ where: { id: userBeforeUpdate.secretary.id } });
         }
       }
 
-      // Atualiza Nurse se existir
-      if (data.role === "NURSE" && data.nurseData) {
+      // Cria/atualiza conforme o role atual
+      if (data.role === "DOCTOR") {
+        if (userBeforeUpdate.doctor) {
+          await tx.doctor.update({
+            where: { id: userBeforeUpdate.doctor.id },
+            data: data.doctorData ?? {},
+          });
+        } else {
+          await tx.doctor.create({
+            data: {
+              userId: updatedUser.id, ...(data.doctorData ?? {
+                crmNumber: "TEMP",
+                crmState: "PB",
+                specialty: "General",
+                department: "EMERGENCY",
+                workStatus: "NOT_WORKING",
+              })
+            },
+          });
+        }
+      }
+
+      if (data.role === "NURSE") {
         if (userBeforeUpdate.nurse) {
           await tx.nurse.update({
             where: { id: userBeforeUpdate.nurse.id },
-            data: data.nurseData,
+            data: data.nurseData ?? {},
           });
         } else {
-          await tx.nurse.create({ data: { userId: updatedUser.id, ...data.nurseData } });
+          await tx.nurse.create({
+            data: {
+              userId: updatedUser.id, ...(data.nurseData ?? {
+                corenNumber: "TEMP",
+                corenState: "PB",
+                level: "ASSISTANT",
+                department: "WARD",
+                experience: 0,
+                workStatus: "NOT_WORKING",
+              })
+            },
+          });
+        }
+      }
+
+      if (data.role === "SECRETARY") {
+        if (userBeforeUpdate.secretary) {
+          await tx.secretary.update({
+            where: { id: userBeforeUpdate.secretary.id },
+            data: data.secretaryData ?? {},
+          });
+        } else {
+          await tx.secretary.create({
+            data: {
+              userId: updatedUser.id, ...(data.secretaryData ?? {
+                workStatus: "NOT_WORKING",
+                shift: "MORNING",
+              })
+            },
+          });
         }
       }
 
@@ -149,7 +215,7 @@ const userService = {
 
     return prisma.user.findUnique({
       where: { id: user.id },
-      include: { doctor: true, nurse: true },
+      include: { doctor: true, nurse: true, secretary: true },
     }) as Promise<UserWithRelations>;
   },
 
@@ -157,21 +223,8 @@ const userService = {
   async deleteUser(id: number): Promise<UserWithRelations> {
     return prisma.user.delete({
       where: { id },
-      include: { doctor: true, nurse: true },
+      include: { doctor: true, nurse: true, secretary: true },
     });
-  },
-
-  // Verificar senha
-  async checkPassword(email: string, password: string): Promise<UserWithRelations | null> {
-    const user = await prisma.user.findUnique({
-      where: { email },
-      include: { doctor: true, nurse: true },
-    });
-
-    if (!user) return null;
-
-    const isValid = await bcrypt.compare(password, user.password);
-    return isValid ? user : null;
   },
 };
 
