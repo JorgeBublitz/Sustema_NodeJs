@@ -36,7 +36,7 @@ const patientController = {
 
     async createPatient(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            let { name, age, email, phone, gender, birthDate, address, allergy, drug, condition, location } = req.body;
+            let { name, age, cpf, email, phone, gender, birthDate, address, allergy, drug, condition, location } = req.body;
 
             // Converte data YYYY-MM-DD ou ISO para Date
             birthDate = new Date(birthDate);
@@ -48,6 +48,7 @@ const patientController = {
             const patient: PatientWithRelations = await patientService.createPatient({
                 name,
                 age,
+                cpf,
                 email,
                 phone,
                 gender,
@@ -79,7 +80,7 @@ const patientController = {
                 return;
             }
 
-            const { name, email, phone, birthDate, address, gender, condition, location } = req.body;
+            const { name, age, cpf, email, phone, birthDate, address, gender, condition, location } = req.body;
 
             let parsedBirthDate: Date | undefined;
             if (birthDate) {
@@ -102,7 +103,9 @@ const patientController = {
 
             const patient = await patientService.updatePatientById(id, {
                 name,
+                age,
                 email,
+                cpf,
                 phone,
                 birthDate: parsedBirthDate,
                 address,

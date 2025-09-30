@@ -158,6 +158,7 @@ model Patient {
 
   name      String
   age       Int
+  cpf       String   @unique
   email     String?  @unique
   phone     String?  @unique
   gender    Gender

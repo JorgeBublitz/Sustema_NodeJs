@@ -18,7 +18,7 @@ async function main() {
                 role: "DOCTOR",
                 doctor: {
                     create: {
-                        crmNumber: "CRM001",
+                        crmNumber: "00001",
                         crmState: "SP",
                         specialty: "Cardiology",
                         department: "EMERGENCY",
@@ -38,7 +38,7 @@ async function main() {
                 role: "DOCTOR",
                 doctor: {
                     create: {
-                        crmNumber: "CRM002",
+                        crmNumber: "00002",
                         crmState: "RJ",
                         specialty: "Nephrology",
                         department: "ICU",
@@ -58,7 +58,7 @@ async function main() {
                 role: "DOCTOR",
                 doctor: {
                     create: {
-                        crmNumber: "CRM003",
+                        crmNumber: "00003",
                         crmState: "MG",
                         specialty: "Surgery",
                         department: "SURGERY",
@@ -82,7 +82,7 @@ async function main() {
                 role: "NURSE",
                 nurse: {
                     create: {
-                        corenNumber: "COREN001",
+                        corenNumber: "00001",
                         corenState: "SP",
                         level: "ASSISTANT",
                         department: "WARD",
@@ -103,7 +103,7 @@ async function main() {
                 role: "NURSE",
                 nurse: {
                     create: {
-                        corenNumber: "COREN002",
+                        corenNumber: "00002",
                         corenState: "RJ",
                         level: "TECHNICIAN",
                         department: "ICU",
@@ -124,7 +124,7 @@ async function main() {
                 role: "NURSE",
                 nurse: {
                     create: {
-                        corenNumber: "COREN003",
+                        corenNumber: "00003",
                         corenState: "MG",
                         level: "GRADUATE",
                         department: "SURGERY",
@@ -189,6 +189,7 @@ async function main() {
             data: {
                 name: "John Doe",
                 age: 60,
+                cpf: "123-456-789-12",
                 gender: "MALE",
                 email: "patient1@example.com",
                 birthDate: new Date("1965-01-01"),
@@ -200,6 +201,7 @@ async function main() {
             data: {
                 name: "Jane Smith",
                 age: 45,
+                cpf: "123-456-159-12",
                 gender: "FEMALE",
                 email: "patient2@example.com",
                 birthDate: new Date("1980-05-12"),
@@ -211,6 +213,7 @@ async function main() {
             data: {
                 name: "Carlos Silva",
                 age: 50,
+                cpf: "123-321-789-12",
                 gender: "MALE",
                 email: "patient3@example.com",
                 birthDate: new Date("1975-08-20"),

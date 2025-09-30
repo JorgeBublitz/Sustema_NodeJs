@@ -22,6 +22,7 @@ const patientService = {
     async createPatient(data: {
         name: string;
         age: number;
+        cpf: string;
         email?: string;
         phone?: string;
         gender: Gender;
@@ -37,6 +38,7 @@ const patientService = {
             data: {
                 name: data.name,
                 age: data.age,
+                cpf: data.cpf,
                 email: data.email,
                 phone: data.phone,
                 gender: data.gender,
@@ -56,6 +58,8 @@ const patientService = {
         data: {
             name?: string;
             email?: string;
+            age?: number;
+            cpf?: string;
             phone?: string;
             birthDate?: Date;
             gender?: Gender;
