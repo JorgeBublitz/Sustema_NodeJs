@@ -1,20 +1,16 @@
-# 🏥 Hospital Management API – Sustema
+# 🏥 **Hospital Management API – Sustema**
 
 API REST para gerenciamento de hospitais, construída com **Node.js**, **Express**, **Prisma ORM** e **PostgreSQL**.  
-Permite cadastrar e gerenciar **usuários, médicos, enfermeiros, secretários, pacientes e agendamentos (appointments)**.
+Permite cadastrar e gerenciar **usuários, médicos, enfermeiros, secretários, pacientes e agendamentos.
 
----
-
-## 🚀 Tecnologias
+## 🚀 **Tecnologias**
 
 - **Node.js**
 - **Express**
 - **Prisma**
 - **PostgreSQL**
 
----
-
-## ⚡ Funcionalidades
+## ⚡ **Funcionalidades**
 
 - CRUD de **usuários** (ADMIN, SECRETARY, DOCTOR, NURSE)  
 - CRUD de **pacientes**  
@@ -22,9 +18,7 @@ Permite cadastrar e gerenciar **usuários, médicos, enfermeiros, secretários, 
 - Criação de **dados de exemplo** (seed)  
 - Relacionamentos entre **usuários, médicos, enfermeiros, secretários, pacientes e agendamentos**  
 
----
-
-## 🛠️ Configuração
+## 🛠️ **Configuração**
 
 1. **Clonar o projeto**  
 ```bash
@@ -52,7 +46,7 @@ npx prisma migrate dev --name init
     - Cria todas as tabelas no banco de dados conforme definido no `schema.prisma`.
     - Popula o banco automaticamente com dados de exemplo (seed), incluindo usuários, médicos, enfermeiros, secretários, pacientes e agendamentos.
 
-## 🏃 Executar a API
+## 🏃 **Executar a API**
 
 Para desenvolvimento com hot reload:  
 ```bash
@@ -61,9 +55,7 @@ npm run dev
 
 A API estará disponível em [http://localhost:3000](http://localhost:3000) (ou porta definida no seu projeto).
 
----
-
-## 🔧 Configurações adicionais
+## 🔧 **Configurações adicionais**
 
 - **Mudar banco de dados:** altere a variável `DATABASE_URL` no `.env` e rode novamente:  
 ```bash
@@ -80,9 +72,7 @@ npx prisma migrate reset
 npx prisma generate
 ```
 
----
-
-## 📝 Estrutura resumida
+## 📝 **Estrutura resumida**
 
 - `/src` → código fonte  
 - `/src/controllers` → controladores da API  
@@ -90,9 +80,7 @@ npx prisma generate
 - `/src/database` → configuração do Prisma e seed  
 - `/prisma/schema.prisma` → modelo do banco de dados  
 
----
-
-## 💻 Testando a API
+## 💻 **Testando a API**
 
 Você pode testar usando **Postman** ou **Insomnia**:
 
