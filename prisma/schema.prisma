@@ -162,6 +162,7 @@ model Patient {
   email     String?  @unique
   phone     String?  @unique
   gender    Gender
+  
   birthDate DateTime
   address   String?
 
