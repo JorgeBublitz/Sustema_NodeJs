@@ -3,7 +3,7 @@
 API REST para gerenciamento de hospitais, construída com **Node.js**, **Express**, **Prisma ORM** e **PostgreSQL**.  
 Permite cadastrar e gerenciar **usuários, médicos, enfermeiros, secretários, pacientes e agendamentos**.
 
-> ⚠️ **Atenção:** este repositório contém dados sensíveis de pacientes e é **privado**. Não torne público sem autorização.
+> ⚠️ **Atenção:** os dados do seed são **fictícios** (apenas para demonstração). Use credenciais reais via `.env` (ver `.env.example`).
 
 ## 🚀 **Tecnologias**
 
