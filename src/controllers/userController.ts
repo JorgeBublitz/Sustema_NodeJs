@@ -35,8 +35,18 @@ const userController = {
 
     async createUser(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const { name, age, gender, email, password, role } = req.body;
-            const user: UserWithRelations = await userService.createUser({ name, age, gender, email, password, role });
+            const { name, age, gender, email, password, role, doctorData, nurseData, secretaryData } = req.body;
+            const user: UserWithRelations = await userService.createUser({
+                name,
+                age,
+                gender,
+                email,
+                password,
+                role,
+                doctorData,
+                nurseData,
+                secretaryData,
+            });
 
             if (!password) {
                 res.status(400).json({ message: "Senha é obrigatória." });
@@ -62,8 +72,16 @@ const userController = {
                 return;
             }
 
-            const { name, email, password, role } = req.body;
-            const user: UserWithRelations = await userService.updateUserById(id, { name, email, password, role });
+            const { name, email, password, role, doctorData, nurseData, secretaryData } = req.body;
+            const user: UserWithRelations = await userService.updateUserById(id, {
+                name,
+                email,
+                password,
+                role,
+                doctorData,
+                nurseData,
+                secretaryData,
+            });
 
             const { password: _, ...sanitized } = user;
             res.json(sanitized);

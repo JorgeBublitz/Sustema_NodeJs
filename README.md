@@ -16,6 +16,7 @@ Permite cadastrar e gerenciar **usuários, médicos, enfermeiros, secretários, 
 ## ⚡ **Funcionalidades**
 
 - **Autenticação JWT** com login e controle de acesso por papel (ADMIN, SECRETARY, DOCTOR, NURSE)
+- **Validação de entrada com Zod** em todos os endpoints (mensagens de erro em pt-BR)
 - CRUD de **usuários** (ADMIN, SECRETARY, DOCTOR, NURSE) — senha **hasheada** com bcrypt e **nunca retornada** pela API
 - CRUD de **pacientes**
 - CRUD de **consultas / agendamentos**
@@ -66,6 +67,46 @@ curl http://localhost:3000/api/auth/me \
 | `/api/appointment`      | Autenticado        | ADMIN, SECRETARY               |
 
 💡 Dica: o seed cria um usuário `admin@example.com` (senha `123456`) para testar.
+
+### Erros de validação
+
+Quando um campo é inválido, a API responde `400` com a lista de erros:
+
+```json
+{
+  "message": "Dados inválidos.",
+  "errors": [
+    { "campo": "email", "mensagem": "E-mail inválido." },
+    { "campo": "password", "mensagem": "A senha deve ter pelo menos 6 caracteres." }
+  ]
+}
+```
+
+### Criando usuário com dados de médico (exemplo)
+
+Para criar um DOCTOR com CRM próprio (em vez do temporário), envie `doctorData`:
+
+```bash
+curl -X POST http://localhost:3000/api/user \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <seu-token>" \
+  -d '{
+    "name": "Dr. Exemplo",
+    "age": 40,
+    "gender": "MALE",
+    "email": "dr.exemplo@example.com",
+    "password": "123456",
+    "role": "DOCTOR",
+    "doctorData": {
+      "crmNumber": "CRM-12345",
+      "crmState": "PB",
+      "specialty": "Cardiology",
+      "department": "EMERGENCY"
+    }
+  }'
+```
+
+💡 Quando os dados do perfil (CRM/COREN/turno) não são informados, são gerados valores temporários únicos por usuário (`TEMP-{id}`) — sem conflito ao criar vários médicos.
 
 ## 🛠️ **Configuração**
 

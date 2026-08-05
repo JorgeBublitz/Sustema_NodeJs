@@ -9,6 +9,29 @@ export type UserWithRelations = Prisma.UserGetPayload<{
 
 const SALT_ROUNDS = 10;
 
+export interface DoctorDataInput {
+  crmNumber?: string;
+  crmState?: StateBR;
+  specialty?: string;
+  department?: Department;
+  workStatus?: WorkStatus;
+}
+
+export interface NurseDataInput {
+  corenNumber?: string;
+  corenState?: StateBR;
+  level?: NurseLevel;
+  department?: Department;
+  experience?: number;
+  specialization?: string;
+  workStatus?: WorkStatus;
+}
+
+export interface SecretaryDataInput {
+  shift?: Shift;
+  workStatus?: WorkStatus;
+}
+
 const userService = {
   // Buscar todos usuários
   async getAllUsers(): Promise<UserWithRelations[]> {
@@ -32,7 +55,10 @@ const userService = {
     gender: Gender;
     email: string;
     password: string;
-    role: Role
+    role: Role;
+    doctorData?: DoctorDataInput;
+    nurseData?: NurseDataInput;
+    secretaryData?: SecretaryDataInput;
   }): Promise<UserWithRelations> {
     if (!data.password || typeof data.password !== "string") {
       throw new Error("Senha é obrigatória e deve ser uma string");
@@ -52,36 +78,39 @@ const userService = {
         },
       });
 
-      // Cria Doctor ou Nurse conforme role
+      // Cria Doctor ou Nurse conforme role.
+      // Usa os dados informados (doctorData/nurseData/secretaryData) ou valores
+      // temporários ÚNICOS por usuário — evita o bug P2002 (CRM/COREN fixos "TEMP").
       if (data.role === "DOCTOR") {
         await tx.doctor.create({
           data: {
             userId: newUser.id,
-            workStatus: "NOT_WORKING",
-            crmNumber: "TEMP",
-            crmState: "PB",
-            specialty: "General",
-            department: "EMERGENCY",
+            workStatus: data.doctorData?.workStatus ?? "NOT_WORKING",
+            crmNumber: data.doctorData?.crmNumber ?? `TEMP-${newUser.id}`,
+            crmState: data.doctorData?.crmState ?? "PB",
+            specialty: data.doctorData?.specialty ?? "General",
+            department: data.doctorData?.department ?? "EMERGENCY",
           },
         });
       } else if (data.role === "NURSE") {
         await tx.nurse.create({
           data: {
             userId: newUser.id,
-            workStatus: "NOT_WORKING",
-            corenNumber: "TEMP",
-            corenState: "PB",
-            level: "ASSISTANT",
-            department: "WARD",
-            experience: 0,
+            workStatus: data.nurseData?.workStatus ?? "NOT_WORKING",
+            corenNumber: data.nurseData?.corenNumber ?? `TEMP-${newUser.id}`,
+            corenState: data.nurseData?.corenState ?? "PB",
+            level: data.nurseData?.level ?? "ASSISTANT",
+            department: data.nurseData?.department ?? "WARD",
+            experience: data.nurseData?.experience ?? 0,
+            specialization: data.nurseData?.specialization,
           },
         });
       } else if (data.role === "SECRETARY") {
         await tx.secretary.create({
           data: {
             userId: newUser.id,
-            workStatus: "NOT_WORKING",
-            shift: "MORNING",
+            workStatus: data.secretaryData?.workStatus ?? "NOT_WORKING",
+            shift: data.secretaryData?.shift ?? "MORNING",
           },
         });
       }
@@ -105,9 +134,9 @@ const userService = {
       email?: string;
       password?: string;
       role?: Role;
-      doctorData?: { crmNumber: string; crmState: StateBR; specialty: string; department: Department; workStatus: WorkStatus };
-      nurseData?: { corenNumber: string; corenState: StateBR; level: NurseLevel; department: Department; experience: number; workStatus: WorkStatus };
-      secretaryData?: { workStatus: WorkStatus, shift: Shift };
+      doctorData?: DoctorDataInput;
+      nurseData?: NurseDataInput;
+      secretaryData?: SecretaryDataInput;
     }
   ): Promise<UserWithRelations> {
     const user = await prisma.$transaction(async (tx) => {
@@ -158,13 +187,12 @@ const userService = {
         } else {
           await tx.doctor.create({
             data: {
-              userId: updatedUser.id, ...(data.doctorData ?? {
-                crmNumber: "TEMP",
-                crmState: "PB",
-                specialty: "General",
-                department: "EMERGENCY",
-                workStatus: "NOT_WORKING",
-              })
+              userId: updatedUser.id,
+              workStatus: data.doctorData?.workStatus ?? "NOT_WORKING",
+              crmNumber: data.doctorData?.crmNumber ?? `TEMP-${updatedUser.id}`,
+              crmState: data.doctorData?.crmState ?? "PB",
+              specialty: data.doctorData?.specialty ?? "General",
+              department: data.doctorData?.department ?? "EMERGENCY",
             },
           });
         }
@@ -179,14 +207,14 @@ const userService = {
         } else {
           await tx.nurse.create({
             data: {
-              userId: updatedUser.id, ...(data.nurseData ?? {
-                corenNumber: "TEMP",
-                corenState: "PB",
-                level: "ASSISTANT",
-                department: "WARD",
-                experience: 0,
-                workStatus: "NOT_WORKING",
-              })
+              userId: updatedUser.id,
+              workStatus: data.nurseData?.workStatus ?? "NOT_WORKING",
+              corenNumber: data.nurseData?.corenNumber ?? `TEMP-${updatedUser.id}`,
+              corenState: data.nurseData?.corenState ?? "PB",
+              level: data.nurseData?.level ?? "ASSISTANT",
+              department: data.nurseData?.department ?? "WARD",
+              experience: data.nurseData?.experience ?? 0,
+              specialization: data.nurseData?.specialization,
             },
           });
         }
@@ -201,10 +229,9 @@ const userService = {
         } else {
           await tx.secretary.create({
             data: {
-              userId: updatedUser.id, ...(data.secretaryData ?? {
-                workStatus: "NOT_WORKING",
-                shift: "MORNING",
-              })
+              userId: updatedUser.id,
+              workStatus: data.secretaryData?.workStatus ?? "NOT_WORKING",
+              shift: data.secretaryData?.shift ?? "MORNING",
             },
           });
         }
