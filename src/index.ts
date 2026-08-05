@@ -1,10 +1,11 @@
-import express, { Application, Request, Response, NextFunction } from "express";
+import express, { Application, Request, Response } from "express";
 import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import routes from "./routes/indexRoutes";
 import prisma from "./database/prismaClient";
 import { env } from "./config/env";
+import { errorHandler } from "./middlewares/errorHandler";
 
 const app: Application = express();
 
@@ -40,11 +41,8 @@ app.use((req: Request, res: Response) => {
   res.status(404).json({ message: "Rota não encontrada" });
 });
 
-// Tratamento de erros global
-app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  console.error("Erro capturado:", err);
-  res.status(500).json({ message: "Erro interno do servidor" });
-});
+// Tratamento de erros global (respeita err.status, ex.: AuthError 401/404)
+app.use(errorHandler);
 
 const PORT = env.port;
 

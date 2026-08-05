@@ -6,6 +6,18 @@ const SALT_ROUNDS = 10;
 async function main() {
     const passwordHash = await bcrypt.hash("123456", SALT_ROUNDS);
 
+    // 🔹 Usuário administrador
+    const admin = await prisma.user.create({
+        data: {
+            name: "System Admin",
+            age: 30,
+            gender: "MALE",
+            email: "admin@example.com",
+            password: passwordHash,
+            role: "ADMIN",
+        },
+    });
+
     // 🔹 Usuários médicos
     const doctors = await Promise.all([
         prisma.user.create({
