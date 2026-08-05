@@ -1,119 +1,40 @@
-import { Request, Response, NextFunction } from "express";
-import userService, { UserWithRelations } from "../services/userService";
+import { createCrudController } from "./crudController";
+import userService from "../services/userService";
+import { removePasswordDeep } from "../utils/sanitize.util";
 
-const userController = {
-    async getAllUsers(req: Request, res: Response, next: NextFunction): Promise<void> {
-        try {
-            const users: UserWithRelations[] = await userService.getAllUsers();
-            const sanitized = users.map(({ password, ...rest }) => rest);
-            res.json(sanitized);
-        } catch (err) {
-            next(err);
-        }
-    },
-
-    async getUserById(req: Request, res: Response, next: NextFunction): Promise<void> {
-        try {
-            const id = parseInt(req.params.id, 10);
-            if (isNaN(id) || id <= 0) {
-                res.status(400).json({ message: "ID inválido. Deve ser um número inteiro positivo." });
-                return;
-            }
-
-            const user: UserWithRelations | null = await userService.getUserById(id);
-            if (!user) {
-                res.status(404).json({ message: "Usuário não encontrado." });
-                return;
-            }
-
-            const { password, ...sanitized } = user;
-            res.json(sanitized);
-        } catch (err) {
-            next(err);
-        }
-    },
-
-    async createUser(req: Request, res: Response, next: NextFunction): Promise<void> {
-        try {
-            const { name, age, gender, email, password, role, doctorData, nurseData, secretaryData } = req.body;
-            const user: UserWithRelations = await userService.createUser({
-                name,
-                age,
-                gender,
-                email,
-                password,
-                role,
-                doctorData,
-                nurseData,
-                secretaryData,
-            });
-
-            if (!password) {
-                res.status(400).json({ message: "Senha é obrigatória." });
-                return;
-            }
-
-            const { password: _, ...sanitized } = user;
-            res.status(201).json(sanitized);
-        } catch (err: any) {
-            if (err.code === "P2002") {
-                res.status(409).json({ message: "Já existe um usuário com este e-mail." });
-            } else {
-                next(err);
-            }
-        }
-    },
-
-    async updateUser(req: Request, res: Response, next: NextFunction): Promise<void> {
-        try {
-            const id = parseInt(req.params.id, 10);
-            if (isNaN(id) || id <= 0) {
-                res.status(400).json({ message: "ID inválido. Deve ser um número inteiro positivo." });
-                return;
-            }
-
-            const { name, email, password, role, doctorData, nurseData, secretaryData } = req.body;
-            const user: UserWithRelations = await userService.updateUserById(id, {
-                name,
-                email,
-                password,
-                role,
-                doctorData,
-                nurseData,
-                secretaryData,
-            });
-
-            const { password: _, ...sanitized } = user;
-            res.json(sanitized);
-        } catch (err: any) {
-            if (err.code === "P2025") {
-                res.status(404).json({ message: "Usuário não encontrado." });
-            } else if (err.code === "P2002") {
-                res.status(409).json({ message: "Já existe um usuário com este e-mail." });
-            } else {
-                next(err);
-            }
-        }
-    },
-
-    async deleteUser(req: Request, res: Response, next: NextFunction): Promise<void> {
-        try {
-            const id = parseInt(req.params.id, 10);
-            if (isNaN(id) || id <= 0) {
-                res.status(400).json({ message: "ID inválido. Deve ser um número inteiro positivo." });
-                return;
-            }
-
-            await userService.deleteUser(id);
-            res.status(204).send();
-        } catch (err: any) {
-            if (err.code === "P2025") {
-                res.status(404).json({ message: "Usuário não encontrado." });
-            } else {
-                next(err);
-            }
-        }
-    },
-};
+const userController = createCrudController({
+  service: {
+    getAll: () => userService.getAllUsers(),
+    getById: (id) => userService.getUserById(id),
+    create: (data) => userService.createUser(data),
+    update: (id, data) => userService.updateUserById(id, data),
+    delete: (id) => userService.deleteUser(id),
+  },
+  nomeRecurso: "Usuário",
+  sanitize: removePasswordDeep,
+  conflictMessage: "Já existe um usuário com este e-mail.",
+  createExtractor: (body) => ({
+    name: body.name as string,
+    age: body.age as number,
+    gender: body.gender as "MALE" | "FEMALE",
+    email: body.email as string,
+    password: body.password as string,
+    role: body.role as "ADMIN" | "SECRETARY" | "DOCTOR" | "NURSE",
+    doctorData: body.doctorData as Record<string, unknown> | undefined,
+    nurseData: body.nurseData as Record<string, unknown> | undefined,
+    secretaryData: body.secretaryData as Record<string, unknown> | undefined,
+  }),
+  updateExtractor: (body) => ({
+    name: body.name as string | undefined,
+    age: body.age as number | undefined,
+    gender: body.gender as "MALE" | "FEMALE" | undefined,
+    email: body.email as string | undefined,
+    password: body.password as string | undefined,
+    role: body.role as "ADMIN" | "SECRETARY" | "DOCTOR" | "NURSE" | undefined,
+    doctorData: body.doctorData as Record<string, unknown> | undefined,
+    nurseData: body.nurseData as Record<string, unknown> | undefined,
+    secretaryData: body.secretaryData as Record<string, unknown> | undefined,
+  }),
+});
 
 export default userController;

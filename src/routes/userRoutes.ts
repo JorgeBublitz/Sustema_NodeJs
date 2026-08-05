@@ -9,10 +9,10 @@ const router = Router();
 // Gerenciamento de usuários é exclusivo do ADMIN
 router.use(authorize("ADMIN"));
 
-router.get("/", userController.getAllUsers);
-router.get("/:id", validate(idParamSchema, "params"), userController.getUserById);
-router.post("/", validate(createUserSchema), userController.createUser);
-router.put("/:id", validate(idParamSchema, "params"), validate(updateUserSchema), userController.updateUser);
-router.delete("/:id", validate(idParamSchema, "params"), userController.deleteUser);
+router.get("/", userController.getAll);
+router.get("/:id", validate(idParamSchema, "params"), userController.getById);
+router.post("/", validate(createUserSchema), userController.create);
+router.put("/:id", validate(idParamSchema, "params"), validate(updateUserSchema), userController.update);
+router.delete("/:id", validate(idParamSchema, "params"), userController.delete);
 
 export default router;

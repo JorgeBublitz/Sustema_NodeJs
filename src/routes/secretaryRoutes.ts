@@ -6,12 +6,12 @@ import { createSecretarySchema, updateSecretarySchema, idParamSchema } from "../
 
 const router = Router();
 
-router.get("/", secretaryController.getAllSecretaries);
-router.get("/:id", validate(idParamSchema, "params"), secretaryController.getSecretaryById);
+router.get("/", secretaryController.getAll);
+router.get("/:id", validate(idParamSchema, "params"), secretaryController.getById);
 
 // Escrita apenas para ADMIN
-router.post("/", authorize("ADMIN"), validate(createSecretarySchema), secretaryController.createSecretary);
-router.put("/:id", authorize("ADMIN"), validate(idParamSchema, "params"), validate(updateSecretarySchema), secretaryController.updateSecretary);
-router.delete("/:id", authorize("ADMIN"), validate(idParamSchema, "params"), secretaryController.deleteSecretary);
+router.post("/", authorize("ADMIN"), validate(createSecretarySchema), secretaryController.create);
+router.put("/:id", authorize("ADMIN"), validate(idParamSchema, "params"), validate(updateSecretarySchema), secretaryController.update);
+router.delete("/:id", authorize("ADMIN"), validate(idParamSchema, "params"), secretaryController.delete);
 
 export default router;

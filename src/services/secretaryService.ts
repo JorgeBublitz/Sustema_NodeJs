@@ -50,7 +50,7 @@ const secretaryService = {
 
     async deleteSecretary(id: number): Promise<SecretaryWithRelations> {
         const secretary = await this.getSecretaryById(id);
-        if (!secretary) throw new Error(`Secretary with ID ${id} not found.`);
+        if (!secretary) throw new Error(`Secretário com ID ${id} não encontrado.`);
         await prisma.secretary.delete({ where: { id } });
         return secretary;
     },

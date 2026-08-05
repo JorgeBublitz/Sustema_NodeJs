@@ -6,12 +6,12 @@ import { createAppointmentSchema, updateAppointmentSchema, idParamSchema } from 
 
 const router = Router();
 
-router.get("/", appointmentController.getAllAppointments);
-router.get("/:id", validate(idParamSchema, "params"), appointmentController.getAppointmentById);
+router.get("/", appointmentController.getAll);
+router.get("/:id", validate(idParamSchema, "params"), appointmentController.getById);
 
 // Escrita apenas para ADMIN e SECRETARY
-router.post("/", authorize("ADMIN", "SECRETARY"), validate(createAppointmentSchema), appointmentController.createAppointment);
-router.put("/:id", authorize("ADMIN", "SECRETARY"), validate(idParamSchema, "params"), validate(updateAppointmentSchema), appointmentController.updateAppointment);
-router.delete("/:id", authorize("ADMIN", "SECRETARY"), validate(idParamSchema, "params"), appointmentController.deleteAppointment);
+router.post("/", authorize("ADMIN", "SECRETARY"), validate(createAppointmentSchema), appointmentController.create);
+router.put("/:id", authorize("ADMIN", "SECRETARY"), validate(idParamSchema, "params"), validate(updateAppointmentSchema), appointmentController.update);
+router.delete("/:id", authorize("ADMIN", "SECRETARY"), validate(idParamSchema, "params"), appointmentController.delete);
 
 export default router;

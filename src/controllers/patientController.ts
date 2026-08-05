@@ -1,149 +1,17 @@
-import { Request, Response, NextFunction } from "express";
-import patientService, { PatientWithRelations } from "../services/patientService";
-import { PatientStatus, Department } from "../generated/prisma";
+import { createCrudController } from "./crudController";
+import patientService from "../services/patientService";
 
-const patientController = {
-    async getAllPatient(req: Request, res: Response, next: NextFunction): Promise<void> {
-        try {
-            const patient: PatientWithRelations[] = await patientService.getAllPatients();
-            res.json(patient);
-        } catch (err) {
-            next(err);
-        }
-    },
-
-    async getPatientById(req: Request, res: Response, next: NextFunction): Promise<void> {
-        try {
-            const id: number = parseInt(req.params.id, 10);
-
-            if (isNaN(id) || id <= 0) {
-                res.status(404).json({ message: "ID inválido. Deve ser um número inteiro positivo." });
-                return;
-            }
-
-            const patient: PatientWithRelations | null = await patientService.getPatientById(id);
-
-            if (!patient) {
-                res.status(404).json({ message: "Paciente não encontrado" })
-                return;
-            }
-
-            res.json(patient);
-        } catch (err) {
-            next(err);
-        }
-    },
-
-    async createPatient(req: Request, res: Response, next: NextFunction): Promise<void> {
-        try {
-            let { name, age, cpf, email, phone, gender, birthDate, address, allergy, drug, condition, location } = req.body;
-
-            // Converte data YYYY-MM-DD ou ISO para Date
-            birthDate = new Date(birthDate);
-            if (isNaN(birthDate.getTime())) {
-                res.status(400).json({ message: "Data de nascimento inválida." });
-                return;
-            }
-
-            const patient: PatientWithRelations = await patientService.createPatient({
-                name,
-                age,
-                cpf,
-                email,
-                phone,
-                gender,
-                birthDate,
-                address,
-                allergy,
-                drug,
-                condition,
-                location,
-            });
-
-            res.status(201).json(patient);
-        } catch (err: any) {
-            if (err.code === "P2002") {
-                res.status(409).json({ message: "Já existe um paciente com este email." });
-            } else if (err.code === "P2003") {
-                res.status(400).json({ message: "Referência inválida (ex: paciente ou médico não existe)." });
-            } else {
-                next(err);
-            }
-        }
-    },
-
-    async updatePatient(req: Request, res: Response, next: NextFunction): Promise<void> {
-        try {
-            const id = parseInt(req.params.id, 10);
-            if (isNaN(id) || id <= 0) {
-                res.status(400).json({ message: "ID inválido. Deve ser um número inteiro positivo." });
-                return;
-            }
-
-            const { name, age, cpf, email, phone, birthDate, address, gender, condition, location } = req.body;
-
-            let parsedBirthDate: Date | undefined;
-            if (birthDate) {
-                parsedBirthDate = new Date(birthDate);
-                if (isNaN(parsedBirthDate.getTime())) {
-                    res.status(400).json({ message: "Data de nascimento inválida." });
-                    return;
-                }
-            }
-
-            if (condition && !Object.values(PatientStatus).includes(condition)) {
-                res.status(400).json({ message: "Condition inválido. Valores permitidos: SURGERY, REST, WAIT." });
-                return;
-            }
-
-            if (location && !Object.values(Department).includes(location)) {
-                res.status(400).json({ message: "Room inválido. Valores permitidos: PS, SURGERY, UTI, WARD." });
-                return;
-            }
-
-            const patient = await patientService.updatePatientById(id, {
-                name,
-                age,
-                email,
-                cpf,
-                phone,
-                birthDate: parsedBirthDate,
-                address,
-                gender,
-                condition,
-                location,
-            });
-
-            res.json(patient);
-        } catch (err: any) {
-            if (err.code === "P2025") {
-                res.status(404).json({ message: "Paciente não encontrado." });
-            } else if (err.code === "P2002") {
-                res.status(409).json({ message: "Já existe um paciente com este email." });
-            } else {
-                next(err);
-            }
-        }
-    },
-
-    async deletePatient(req: Request, res: Response, next: NextFunction): Promise<void> {
-        try {
-            const id = parseInt(req.params.id, 10);
-            if (isNaN(id) || id <= 0) {
-                res.status(400).json({ message: "ID inválido. Deve ser um número inteiro positivo." });
-                return;
-            }
-
-            await patientService.deletePatient(id);
-            res.status(204).send();
-        } catch (err: any) {
-            if (err.code === "P2025") {
-                res.status(404).json({ message: "Paciente não encontrado." });
-            } else {
-                next(err);
-            }
-        }
-    },
-};
+const patientController = createCrudController({
+  service: {
+    getAll: () => patientService.getAllPatients(),
+    getById: (id) => patientService.getPatientById(id),
+    create: (data) => patientService.createPatient(data),
+    update: (id, data) => patientService.updatePatientById(id, data),
+    delete: (id) => patientService.deletePatient(id),
+  },
+  nomeRecurso: "Paciente",
+  conflictMessage: "Já existe um paciente com este email, CPF ou telefone.",
+  referenceMessage: "Referência inválida (ex: paciente ou médico não existe).",
+});
 
 export default patientController;

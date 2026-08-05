@@ -102,7 +102,7 @@ const appointmentService = {
 
   async deleteAppointment(id: number): Promise<AppointmentWithRelations> {
     const appointment = await this.getAppointmentById(id);
-    if (!appointment) throw new Error(`Appointment with ID ${id} not found.`);
+    if (!appointment) throw new Error(`Agendamento com ID ${id} não encontrado.`);
     await prisma.appointment.delete({ where: { id } });
     return appointment;
   },

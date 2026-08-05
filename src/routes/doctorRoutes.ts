@@ -6,12 +6,12 @@ import { createDoctorSchema, updateDoctorSchema, idParamSchema } from "../schema
 
 const router = Router();
 
-router.get("/", doctorController.getAllDoctors);
-router.get("/:id", validate(idParamSchema, "params"), doctorController.getDoctorById);
+router.get("/", doctorController.getAll);
+router.get("/:id", validate(idParamSchema, "params"), doctorController.getById);
 
 // Escrita apenas para ADMIN
-router.post("/", authorize("ADMIN"), validate(createDoctorSchema), doctorController.createDoctor);
-router.put("/:id", authorize("ADMIN"), validate(idParamSchema, "params"), validate(updateDoctorSchema), doctorController.updateDoctor);
-router.delete("/:id", authorize("ADMIN"), validate(idParamSchema, "params"), doctorController.deleteDoctor);
+router.post("/", authorize("ADMIN"), validate(createDoctorSchema), doctorController.create);
+router.put("/:id", authorize("ADMIN"), validate(idParamSchema, "params"), validate(updateDoctorSchema), doctorController.update);
+router.delete("/:id", authorize("ADMIN"), validate(idParamSchema, "params"), doctorController.delete);
 
 export default router;
