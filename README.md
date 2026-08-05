@@ -1,6 +1,4 @@
-# 🏥 **Hospital Management API – Sustema**
-
-> 🎓 **Projeto Acadêmico** — desenvolvido durante o curso de Ciência da Computação (UNIPE).
+# Hospital Management API - Sustema
 
 API REST para gerenciamento de hospitais, construída com **Node.js**, **Express**, **Prisma ORM** e **PostgreSQL**.  
 Permite cadastrar e gerenciar **usuários, médicos, enfermeiros, secretários, pacientes e agendamentos**.
