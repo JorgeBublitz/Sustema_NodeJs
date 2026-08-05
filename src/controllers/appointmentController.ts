@@ -1,11 +1,12 @@
 import { Request, Response, NextFunction } from "express";
 import appointmentService, { AppointmentWithRelations } from "../services/appointmentService";
+import { removePasswordDeep } from "../utils/sanitize.util";
 
 const appointmentController = {
     async getAllAppointments(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             const appointments: AppointmentWithRelations[] = await appointmentService.getAllAppointments();
-            res.json(appointments);
+            res.json(removePasswordDeep(appointments));
         } catch (err) {
             next(err);
         }
@@ -27,7 +28,7 @@ const appointmentController = {
                 return;
             }
 
-            res.json(appointment);
+            res.json(removePasswordDeep(appointment));
         } catch (err) {
             next(err);
         }
@@ -47,7 +48,7 @@ const appointmentController = {
                 notes,
             });
 
-            res.status(201).json(appointment);
+            res.status(201).json(removePasswordDeep(appointment));
         } catch (err: any) {
             if (err.code === "P2003") {
                 res.status(400).json({ message: "Doutor, paciente, enfermeiro ou secretário informado não existe." });
@@ -77,7 +78,7 @@ const appointmentController = {
                 notes,
             });
 
-            res.json(appointment);
+            res.json(removePasswordDeep(appointment));
         } catch (err: any) {
             if (err.code === "P2025") {
                 res.status(404).json({ message: "Agendamento não encontrado." });

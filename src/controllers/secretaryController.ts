@@ -1,11 +1,12 @@
 import { Request, Response, NextFunction } from "express";
 import secretaryService, { SecretaryWithRelations } from "../services/secretaryService";
+import { removePasswordDeep } from "../utils/sanitize.util";
 
 const secretaryController = {
     async getAllSecretaries(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             const secretaries: SecretaryWithRelations[] = await secretaryService.getAllSecretaries();
-            res.json(secretaries);
+            res.json(removePasswordDeep(secretaries));
         } catch (err) {
             next(err);
         }
@@ -25,7 +26,7 @@ const secretaryController = {
                 return;
             }
 
-            res.json(secretary);
+            res.json(removePasswordDeep(secretary));
         } catch (err) {
             next(err);
         }
@@ -41,7 +42,7 @@ const secretaryController = {
                 workStatus,
             });
 
-            res.status(201).json(secretary);
+            res.status(201).json(removePasswordDeep(secretary));
         } catch (err: any) {
             if (err.code === "P2003") {
                 res.status(400).json({ message: "Usuário informado não existe." });
@@ -62,7 +63,7 @@ const secretaryController = {
             const { shift, workStatus } = req.body;
 
             const secretary = await secretaryService.updateSecretary(id, { shift, workStatus });
-            res.json(secretary);
+            res.json(removePasswordDeep(secretary));
         } catch (err: any) {
             if (err.code === "P2025") {
                 res.status(404).json({ message: "Secretário não encontrado." });

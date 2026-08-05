@@ -1,12 +1,13 @@
 import { WorkStatus } from './../generated/prisma/index.d';
 import { Request, Response, NextFunction } from "express";
 import nurseService, { NurseWithRelations } from "../services/nurseService";
+import { removePasswordDeep } from "../utils/sanitize.util";
 
 const nurseController = {
     async getAllNurse(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             const nurses: NurseWithRelations[] = await nurseService.getAllNurses();
-            res.json(nurses);
+            res.json(removePasswordDeep(nurses));
         } catch (err) {
             next(err);
         }
@@ -28,7 +29,7 @@ const nurseController = {
                 return;
             }
 
-            res.json(nurse);
+            res.json(removePasswordDeep(nurse));
         } catch (err) {
             next(err);
         }
@@ -49,7 +50,7 @@ const nurseController = {
                 specialization,
             });
 
-            res.status(201).json(nurse);
+            res.status(201).json(removePasswordDeep(nurse));
         } catch (err: any) {
             if (err.code === "P2002") {
                 res.status(409).json({ message: "Já existe um enfermeiro com este CRM." });
@@ -73,7 +74,7 @@ const nurseController = {
             const { corenNumber, corenState, workStatus, level, department, experience, specialization } = req.body;
 
             const nurse: NurseWithRelations = await nurseService.updateNurseById(id, { corenNumber, corenState, workStatus, level, department, experience, specialization });
-            res.json(nurse);
+            res.json(removePasswordDeep(nurse));
         } catch (err: any) {
             if (err.code === "P2025") {
                 res.status(404).json({ message: "Médico não encontrado." });

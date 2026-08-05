@@ -1,12 +1,13 @@
 import { WorkStatus, Department } from './../generated/prisma/index.d';
 import { Request, Response, NextFunction } from "express";
 import doctorService, { DoctorWithRelations } from "../services/doctorService";
+import { removePasswordDeep } from "../utils/sanitize.util";
 
 const doctorController = {
     async getAllDoctors(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             const doctors: DoctorWithRelations[] = await doctorService.getAllDoctors();
-            res.json(doctors);
+            res.json(removePasswordDeep(doctors));
         } catch (err) {
             next(err);
         }
@@ -28,7 +29,7 @@ const doctorController = {
                 return;
             }
 
-            res.json(doctor);
+            res.json(removePasswordDeep(doctor));
         } catch (err) {
             next(err);
         }
@@ -47,7 +48,7 @@ const doctorController = {
                 department
             });
 
-            res.status(201).json(doctor);
+            res.status(201).json(removePasswordDeep(doctor));
         } catch (err: any) {
             if (err.code === "P2002") {
                 res.status(409).json({ message: "Já existe um médico com este CRM." });
@@ -71,7 +72,7 @@ const doctorController = {
             const { crmNumber, crmState, specialty, workStatus, department } = req.body;
 
             const doctor: DoctorWithRelations = await doctorService.updateDoctorById(id, { crmNumber, crmState, specialty, workStatus, department });
-            res.json(doctor);
+            res.json(removePasswordDeep(doctor));
         } catch (err: any) {
             if (err.code === "P2025") {
                 res.status(404).json({ message: "Médico não encontrado." });
