@@ -3,7 +3,6 @@ import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import routes from "./routes/indexRoutes";
-import prisma from "./database/prismaClient";
 import { env } from "./config/env";
 import { errorHandler } from "./middlewares/errorHandler";
 
@@ -30,8 +29,15 @@ const globalLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: "Muitas requisições. Tente novamente mais tarde." },
+  // Nos testes automatizados o limite atrapalharia a suíte
+  skip: () => env.nodeEnv === "test",
 });
 app.use("/api", globalLimiter);
+
+// Health check
+app.get("/health", (_req: Request, res: Response) => {
+  res.json({ status: "ok" });
+});
 
 // Rotas
 app.use("/api", routes);
@@ -43,23 +49,5 @@ app.use((req: Request, res: Response) => {
 
 // Tratamento de erros global (respeita err.status, ex.: AuthError 401/404)
 app.use(errorHandler);
-
-const PORT = env.port;
-
-const server = app.listen(PORT, () => {
-  console.log(`🚀 Server rodando em http://localhost:${PORT}`);
-});
-
-// Graceful shutdown
-const gracefulShutdown = async (signal: string) => {
-  console.log(`\n${signal} recebido. Encerrando servidor...`);
-  server.close(async () => {
-    await prisma.$disconnect();
-    process.exit(0);
-  });
-};
-
-process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
-process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 
 export default app;

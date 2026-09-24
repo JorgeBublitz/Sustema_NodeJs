@@ -2,7 +2,7 @@ import { z } from "zod";
 import { genderEnum, departmentEnum, patientStatusEnum } from "./enums.schema";
 
 const cpf = z.string().min(11, "CPF deve ter pelo menos 11 caracteres.").max(14, "CPF muito longo.");
-const email = z.string().email("E-mail inválido.").optional();
+const email = z.string().trim().toLowerCase().email("E-mail inválido.").optional();
 const phone = z.string().min(8, "Telefone inválido.").optional();
 
 export const createPatientSchema = z.object({
@@ -29,6 +29,8 @@ export const updatePatientSchema = z.object({
   gender: genderEnum.optional(),
   birthDate: z.coerce.date("Data de nascimento inválida.").optional(),
   address: z.string().optional(),
+  allergy: z.string().optional(),
+  drug: z.string().optional(),
   condition: patientStatusEnum.optional(),
   location: departmentEnum.optional(),
 });

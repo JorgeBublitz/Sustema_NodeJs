@@ -3,20 +3,20 @@ import type { StateBR, Prisma, Department, WorkStatus } from "../generated/prism
 
 // Tipo com relacionamentos
 export type DoctorWithRelations = Prisma.DoctorGetPayload<{
-    include: { user: true; appointments: true }
+    include: { user: true; appointments: { include: { appointment: true } } }
 }>;
 
 const doctorService = {
     async getAllDoctors(): Promise<DoctorWithRelations[]> {
         return prisma.doctor.findMany({
-            include: { user: true, appointments: true },
+            include: { user: true, appointments: { include: { appointment: true } } },
         });
     },
 
     async getDoctorById(id: number): Promise<DoctorWithRelations | null> {
         return prisma.doctor.findUnique({
             where: { id },
-            include: { user: true, appointments: true },
+            include: { user: true, appointments: { include: { appointment: true } } },
         });
     },
 
@@ -30,10 +30,7 @@ const doctorService = {
                 specialty: data.specialty,
                 department: data.department
             },
-            include: {
-                user: true,
-                appointments: true
-            }
+            include: { user: true, appointments: { include: { appointment: true } } }
         });
     },
 
@@ -50,14 +47,14 @@ const doctorService = {
         return prisma.doctor.update({
             where: { id },
             data,
-            include: { user: true, appointments: true },
+            include: { user: true, appointments: { include: { appointment: true } } },
         });
     },
 
     async deleteDoctor(id: number): Promise<DoctorWithRelations> {
         return prisma.doctor.delete({
             where: { id },
-            include: { user: true, appointments: true },
+            include: { user: true, appointments: { include: { appointment: true } } },
         });
     },
 };

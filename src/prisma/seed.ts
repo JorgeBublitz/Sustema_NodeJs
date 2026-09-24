@@ -7,7 +7,7 @@ async function main() {
     const passwordHash = await bcrypt.hash("123456", SALT_ROUNDS);
 
     // 🔹 Usuário administrador
-    const admin = await prisma.user.create({
+    await prisma.user.create({
         data: {
             name: "System Admin",
             age: 30,
@@ -245,8 +245,8 @@ async function main() {
                 notes: "Consulta de rotina",
                 patientId: patients[0].id,
                 secretaryId: secretaries[0].secretary!.id,
-                doctorId: doctors[0].doctor!.id,
-                nurseId: nurses[0].nurse!.id,
+                doctors: { create: [{ doctorId: doctors[0].doctor!.id }] },
+                nurses: { create: [{ nurseId: nurses[0].nurse!.id }] },
             },
         }),
         prisma.appointment.create({
@@ -257,8 +257,8 @@ async function main() {
                 notes: "Cirurgia cardíaca",
                 patientId: patients[1].id,
                 secretaryId: secretaries[1].secretary!.id,
-                doctorId: doctors[1].doctor!.id,
-                nurseId: nurses[1].nurse!.id,
+                doctors: { create: [{ doctorId: doctors[1].doctor!.id }] },
+                nurses: { create: [{ nurseId: nurses[1].nurse!.id }] },
             },
         }),
         prisma.appointment.create({
@@ -269,8 +269,8 @@ async function main() {
                 notes: "Revisão pós cirurgia",
                 patientId: patients[2].id,
                 secretaryId: secretaries[2].secretary!.id,
-                doctorId: doctors[2].doctor!.id,
-                nurseId: nurses[2].nurse!.id,
+                doctors: { create: [{ doctorId: doctors[2].doctor!.id }] },
+                nurses: { create: [{ nurseId: nurses[2].nurse!.id }] },
             },
         }),
     ]);

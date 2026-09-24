@@ -1,6 +1,6 @@
-import { Shift } from './../generated/prisma/index.d';
 import prisma from "../database/prismaClient";
-import { type Prisma, type Role, type StateBR, type Gender, Department, NurseLevel, WorkStatus } from "../generated/prisma";
+import type { Prisma, Role, StateBR, Gender, Department, NurseLevel, WorkStatus, Shift } from "../generated/prisma";
+import { HttpError } from "../utils/http-error";
 import bcrypt from "bcrypt";
 
 export type UserWithRelations = Prisma.UserGetPayload<{
@@ -61,7 +61,7 @@ const userService = {
     secretaryData?: SecretaryDataInput;
   }): Promise<UserWithRelations> {
     if (!data.password || typeof data.password !== "string") {
-      throw new Error("Senha é obrigatória e deve ser uma string");
+      throw new HttpError(400, "Senha é obrigatória.");
     }
 
     const passwordHash = await bcrypt.hash(data.password, SALT_ROUNDS);
@@ -145,9 +145,9 @@ const userService = {
         include: { doctor: true, nurse: true, secretary: true },
       });
 
-      if (!userBeforeUpdate) throw new Error("Usuário não encontrado");
+      if (!userBeforeUpdate) throw new HttpError(404, "Usuário não encontrado.");
 
-      const updateData: any = { ...data };
+      const updateData: Record<string, unknown> = { ...data };
 
       // Se tem senha nova → gera hash
       if (data.password) {

@@ -64,6 +64,8 @@ const patientService = {
             birthDate?: Date;
             gender?: Gender;
             address?: string;
+            allergy?: string;
+            drug?: string;
             condition?: PatientStatus;
             location?: Department;
         }

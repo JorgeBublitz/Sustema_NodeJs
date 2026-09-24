@@ -36,7 +36,7 @@ const appointmentService = {
 
   async createAppointment(data: {
     dateTime: Date;
-    doctorIds: number[];
+    doctorIds?: number[];
     patientId: number;
     nurseIds?: number[];
     notes?: string;
@@ -48,7 +48,7 @@ const appointmentService = {
         patientId: data.patientId,
         secretaryId: data.secretaryId,
         notes: data.notes,
-        doctors: { create: data.doctorIds.map((doctorId) => ({ doctorId })) },
+        doctors: { create: (data.doctorIds ?? []).map((doctorId) => ({ doctorId })) },
         nurses: data.nurseIds
           ? { create: data.nurseIds.map((nurseId) => ({ nurseId })) }
           : undefined,
@@ -101,10 +101,16 @@ const appointmentService = {
   },
 
   async deleteAppointment(id: number): Promise<AppointmentWithRelations> {
-    const appointment = await this.getAppointmentById(id);
-    if (!appointment) throw new Error(`Agendamento com ID ${id} não encontrado.`);
-    await prisma.appointment.delete({ where: { id } });
-    return appointment;
+    // Se não existir, o Prisma lança P2025 e o controller responde 404
+    return prisma.appointment.delete({
+      where: { id },
+      include: {
+        doctors: { include: { doctor: { include: { user: true } } } },
+        nurses: { include: { nurse: { include: { user: true } } } },
+        patient: true,
+        secretary: { include: { user: true } },
+      },
+    });
   },
 };
 

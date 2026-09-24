@@ -9,7 +9,7 @@ import {
   stateBrEnum,
 } from "./enums.schema";
 
-const email = z.string().email("E-mail inválido.");
+const email = z.string().trim().toLowerCase().email("E-mail inválido.");
 const name = z.string().min(2, "O nome deve ter pelo menos 2 caracteres.");
 const age = z.coerce.number().int("Idade deve ser um número inteiro.").min(0, "Idade não pode ser negativa.");
 const password = z.string().min(6, "A senha deve ter pelo menos 6 caracteres.");

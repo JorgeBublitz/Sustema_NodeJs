@@ -7,7 +7,9 @@ export function removePasswordDeep<T>(value: T): T {
     return value.map((item) => removePasswordDeep(item)) as unknown as T;
   }
 
-  if (value !== null && typeof value === "object") {
+  // Mantém Date (e outros objetos que não são "simples") intactos: antes as datas
+  // viravam {} na resposta porque Object.entries(new Date()) é vazio
+  if (value !== null && typeof value === "object" && Object.getPrototypeOf(value) === Object.prototype) {
     const result: Record<string, unknown> = {};
     for (const [key, val] of Object.entries(value as Record<string, unknown>)) {
       if (key === "password") continue;

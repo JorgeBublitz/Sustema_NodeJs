@@ -3,6 +3,8 @@ import { Request, Response, NextFunction } from "express";
 /**
  * Contrato mínimo que um service precisa expor para o factory CRUD.
  */
+// Os defaults `any` permitem que cada controller declare o service inline e o TS infira os tipos.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface CrudService<T, CreateData = any, UpdateData = any> {
   getAll(): Promise<T[]>;
   getById(id: number): Promise<T | null>;
@@ -27,6 +29,11 @@ export interface CrudControllerOptions<T, CreateData, UpdateData> {
   updateExtractor?: (body: Record<string, unknown>) => UpdateData;
 }
 
+/** Código de erro do Prisma (ex.: P2002), se houver. */
+function prismaCode(err: unknown): string | undefined {
+  return typeof err === "object" && err !== null ? (err as { code?: string }).code : undefined;
+}
+
 /**
  * Factory de controller CRUD.
  *
@@ -34,6 +41,7 @@ export interface CrudControllerOptions<T, CreateData, UpdateData> {
  * appointment/user: todos seguem o mesmo fluxo (getAll, getById, create, update,
  * delete) com tratamento padrão de ID, 404, P2002/P2003/P2025 e sanitização.
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function createCrudController<T, CreateData = any, UpdateData = any>({
   service,
   nomeRecurso,
@@ -76,10 +84,10 @@ export function createCrudController<T, CreateData = any, UpdateData = any>({
       try {
         const item = await service.create(createExtractor(req.body));
         send(res, 201, item);
-      } catch (err: any) {
-        if (err.code === "P2002") {
+      } catch (err: unknown) {
+        if (prismaCode(err) === "P2002") {
           res.status(409).json({ message: conflictMessage });
-        } else if (err.code === "P2003") {
+        } else if (prismaCode(err) === "P2003") {
           res.status(400).json({ message: referenceMessage });
         } else {
           next(err);
@@ -91,10 +99,10 @@ export function createCrudController<T, CreateData = any, UpdateData = any>({
       try {
         const item = await service.update(parseId(req), updateExtractor(req.body));
         send(res, 200, item);
-      } catch (err: any) {
-        if (err.code === "P2025") {
+      } catch (err: unknown) {
+        if (prismaCode(err) === "P2025") {
           res.status(404).json({ message: `${nomeRecurso} não encontrado(a).` });
-        } else if (err.code === "P2002") {
+        } else if (prismaCode(err) === "P2002") {
           res.status(409).json({ message: conflictMessage });
         } else {
           next(err);
@@ -106,8 +114,8 @@ export function createCrudController<T, CreateData = any, UpdateData = any>({
       try {
         await service.delete(parseId(req));
         res.status(204).send();
-      } catch (err: any) {
-        if (err.code === "P2025") {
+      } catch (err: unknown) {
+        if (prismaCode(err) === "P2025") {
           res.status(404).json({ message: `${nomeRecurso} não encontrado(a).` });
         } else {
           next(err);

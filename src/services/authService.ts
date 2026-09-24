@@ -38,6 +38,7 @@ const authService = {
       { expiresIn: env.jwtExpiresIn as jwt.SignOptions["expiresIn"] }
     );
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password: _senha, ...usuarioSemSenha } = user;
 
     return {

@@ -2,20 +2,20 @@ import prisma from "../database/prismaClient";
 import type { StateBR, Prisma, WorkStatus, NurseLevel, Department } from "../generated/prisma";
 
 export type NurseWithRelations = Prisma.NurseGetPayload<{
-    include: { user: true; appointments: true }
+    include: { user: true; appointments: { include: { appointment: true } } }
 }>;
 
 const nurseService = {
     async getAllNurses(): Promise<NurseWithRelations[]> {
         return prisma.nurse.findMany({
-            include: { user: true, appointments: true },
+            include: { user: true, appointments: { include: { appointment: true } } },
         });
     },
 
     async getNurseById(id: number): Promise<NurseWithRelations | null> {
         return prisma.nurse.findUnique({
             where: { id },
-            include: { user: true, appointments: true },
+            include: { user: true, appointments: { include: { appointment: true } } },
         });
     },
 
@@ -31,7 +31,7 @@ const nurseService = {
                 experience: data.experience,
                 specialization: data.specialization,
             },
-            include: { user: true, appointments: true },
+            include: { user: true, appointments: { include: { appointment: true } } },
         });
     },
 
@@ -50,14 +50,14 @@ const nurseService = {
         return prisma.nurse.update({
             where: { id },
             data,
-            include: { user: true, appointments: true },
+            include: { user: true, appointments: { include: { appointment: true } } },
         });
     },
 
     async deleteNurse(id: number): Promise<NurseWithRelations> {
         return prisma.nurse.delete({
             where: { id },
-            include: { user: true, appointments: true },
+            include: { user: true, appointments: { include: { appointment: true } } },
         });
     },
 };

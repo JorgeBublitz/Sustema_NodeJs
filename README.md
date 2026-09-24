@@ -1,189 +1,122 @@
-# Hospital Management API - Sustema
+# Sustema: API de Gestão Hospitalar
 
-API REST para gerenciamento de hospitais, construída com **Node.js**, **Express**, **Prisma ORM** e **PostgreSQL**.  
-Permite cadastrar e gerenciar **usuários, médicos, enfermeiros, secretários, pacientes e agendamentos**.
+[![CI](https://github.com/JorgeBublitz/Sustema_NodeJs/actions/workflows/ci.yml/badge.svg)](https://github.com/JorgeBublitz/Sustema_NodeJs/actions/workflows/ci.yml)
+![Node.js](https://img.shields.io/badge/Node.js-22-339933?logo=node.js&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Prisma-4169E1?logo=postgresql&logoColor=white)
 
-> ⚠️ **Atenção:** os dados do seed são **fictícios** (apenas para demonstração). Use credenciais reais via `.env` (ver `.env.example`).
+API REST para a rotina de um hospital: usuários com papéis diferentes (administração, recepção, médicos e enfermagem), cadastro de pacientes e agendamento de consultas e cirurgias com equipes de vários profissionais.
 
-## 🚀 **Tecnologias**
+## Destaques técnicos
 
-- **Node.js**
-- **Express** 5
-- **Prisma** (PostgreSQL)
-- **JWT** (autenticação via `jsonwebtoken`)
-- **Helmet** + **Express Rate Limit** (segurança)
+- **Controle de acesso por papel (RBAC)** com quatro perfis: `ADMIN`, `SECRETARY`, `DOCTOR` e `NURSE`.
+- **Modelagem relacional com 8 tabelas**, incluindo tabelas de junção para agendamentos com vários médicos e enfermeiros, e validação de CRM e COREN únicos por estado.
+- **Criação de usuário em transação**: o usuário e o perfil profissional dele (médico, enfermeiro ou secretária) são criados juntos. Quando o papel muda, o perfil antigo é substituído na mesma transação.
+- **Factory de controllers CRUD** genérica, compartilhada por seis recursos.
+- **Validação com Zod**, e-mails normalizados e senhas com bcrypt que nunca aparecem nas respostas.
+- **Tratamento global de erros**: duplicidade retorna `409`, registro inexistente `404`, referência inválida `400` e JSON malformado `400`.
+- **TypeScript em modo `strict`**, ESLint e **testes de integração** (Vitest + Supertest) contra PostgreSQL real no **GitHub Actions**.
 
-## ⚡ **Funcionalidades**
+## Stack
 
-- **Autenticação JWT** com login e controle de acesso por papel (ADMIN, SECRETARY, DOCTOR, NURSE)
-- **Validação de entrada com Zod** em todos os endpoints (mensagens de erro em pt-BR)
-- CRUD de **usuários** (ADMIN, SECRETARY, DOCTOR, NURSE) — senha **hasheada** com bcrypt e **nunca retornada** pela API
-- CRUD de **pacientes**
-- CRUD de **consultas / agendamentos**
-- Criação de **dados de exemplo** (seed)
-- Relacionamentos entre **usuários, médicos, enfermeiros, secretários, pacientes e agendamentos**
+| Camada | Tecnologias |
+| --- | --- |
+| Runtime e linguagem | Node.js, TypeScript |
+| Framework | Express 5 |
+| Banco de dados | PostgreSQL com Prisma ORM |
+| Validação | Zod |
+| Segurança | JWT, bcrypt, Helmet, express-rate-limit, CORS |
+| Qualidade | Vitest, Supertest, ESLint, GitHub Actions |
 
-## 🔐 **Autenticação**
+## Modelo de dados
 
-Todas as rotas (exceto `/api/auth/login`) exigem um token JWT:
-
-```
-Authorization: Bearer <seu-token>
-```
-
-### Login
-
-```bash
-curl -X POST http://localhost:3000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email": "admin@example.com", "password": "123456"}'
-```
-
-Resposta:
-
-```json
-{
-  "token": "eyJhbGciOiJIUzI1NiIs...",
-  "user": { "id": 1, "name": "System Admin", "email": "admin@example.com", "role": "ADMIN", ... }
-}
+```mermaid
+erDiagram
+    USER ||--o| DOCTOR : "é"
+    USER ||--o| NURSE : "é"
+    USER ||--o| SECRETARY : "é"
+    PATIENT ||--o{ APPOINTMENT : tem
+    SECRETARY ||--o{ APPOINTMENT : agenda
+    APPOINTMENT ||--o{ APPOINTMENT_DOCTOR : ""
+    DOCTOR ||--o{ APPOINTMENT_DOCTOR : ""
+    APPOINTMENT ||--o{ APPOINTMENT_NURSE : ""
+    NURSE ||--o{ APPOINTMENT_NURSE : ""
 ```
 
-### Usuário autenticado
+## Endpoints e permissões
 
-```bash
-curl http://localhost:3000/api/auth/me \
-  -H "Authorization: Bearer <seu-token>"
-```
+Todas as rotas ficam sob `/api` e exigem `Authorization: Bearer <token>`, exceto o login. Cada recurso tem `GET /`, `GET /:id`, `POST /`, `PUT /:id` e `DELETE /:id`.
 
-### Papéis e permissões
+| Recurso | Leitura | Escrita |
+| --- | --- | --- |
+| `POST /auth/login` · `GET /auth/me` | pública / autenticado | |
+| `/user` | ADMIN | ADMIN |
+| `/doctor` · `/nurse` · `/secretary` | autenticado | ADMIN |
+| `/pacient` | autenticado | ADMIN, SECRETARY |
+| `/appointment` | autenticado | ADMIN, SECRETARY |
 
-| Rota                    | Leitura            | Escrita                        |
-|-------------------------|--------------------|--------------------------------|
-| `/api/user`             | ADMIN              | ADMIN                          |
-| `/api/doctor`           | Autenticado        | ADMIN                          |
-| `/api/nurse`            | Autenticado        | ADMIN                          |
-| `/api/secretary`        | Autenticado        | ADMIN                          |
-| `/api/pacient`          | Autenticado        | ADMIN, SECRETARY               |
-| `/api/appointment`      | Autenticado        | ADMIN, SECRETARY               |
-
-💡 Dica: o seed cria um usuário `admin@example.com` (senha `123456`) para testar.
-
-### Erros de validação
-
-Quando um campo é inválido, a API responde `400` com a lista de erros:
-
-```json
-{
-  "message": "Dados inválidos.",
-  "errors": [
-    { "campo": "email", "mensagem": "E-mail inválido." },
-    { "campo": "password", "mensagem": "A senha deve ter pelo menos 6 caracteres." }
-  ]
-}
-```
-
-### Criando usuário com dados de médico (exemplo)
-
-Para criar um DOCTOR com CRM próprio (em vez do temporário), envie `doctorData`:
+Exemplo: criar um médico com os dados do CRM.
 
 ```bash
 curl -X POST http://localhost:3000/api/user \
+  -H "Authorization: Bearer <token de ADMIN>" \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <seu-token>" \
   -d '{
-    "name": "Dr. Exemplo",
-    "age": 40,
-    "gender": "MALE",
-    "email": "dr.exemplo@example.com",
-    "password": "123456",
-    "role": "DOCTOR",
-    "doctorData": {
-      "crmNumber": "CRM-12345",
-      "crmState": "PB",
-      "specialty": "Cardiology",
-      "department": "EMERGENCY"
-    }
+    "name": "Dr. Gregory", "age": 45, "gender": "MALE",
+    "email": "gregory@hospital.com", "password": "senha123", "role": "DOCTOR",
+    "doctorData": { "crmNumber": "12345", "crmState": "PB", "specialty": "Cardiologia", "department": "SURGERY" }
   }'
 ```
 
-💡 Quando os dados do perfil (CRM/COREN/turno) não são informados, são gerados valores temporários únicos por usuário (`TEMP-{id}`) — sem conflito ao criar vários médicos.
+Exemplo: agendar uma cirurgia com dois médicos e um enfermeiro.
 
-## 🛠️ **Configuração**
+```bash
+curl -X POST http://localhost:3000/api/appointment \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{ "dateTime": "2026-11-10T09:00:00Z", "patientId": 1, "doctorIds": [1, 2], "nurseIds": [1], "notes": "Cirurgia cardíaca" }'
+```
 
-1. **Clonar o projeto**
+## Como rodar localmente
+
+**Pré-requisitos:** Node.js 20 ou superior e um PostgreSQL acessível.
+
 ```bash
 git clone https://github.com/JorgeBublitz/Sustema_NodeJs.git
 cd Sustema_NodeJs
-code .  // Para abrir o VSCode
+npm install                  # também gera o Prisma Client em src/generated
+cp .env.example .env         # preencha DATABASE_URL e JWT_SECRET
+npx prisma migrate deploy    # cria as tabelas
+npm run seed                 # dados de exemplo
+npm run dev                  # http://localhost:3000/api
 ```
 
-2. **Instalar dependências**
-```bash
-npm install
+O seed cria usuários de todos os papéis com a senha `123456`, por exemplo `admin@example.com`, `doctor1@example.com` e `secretary1@example.com`.
+
+## Scripts
+
+| Comando | O que faz |
+| --- | --- |
+| `npm run dev` | Servidor com recarga automática |
+| `npm test` | Testes de integração (limpa o banco do `DATABASE_URL`; use um banco só para testes) |
+| `npm run lint` / `npm run typecheck` | ESLint e checagem de tipos |
+| `npm run build` / `npm start` | Build de produção e execução |
+| `npm run seed` | Popula o banco com dados de exemplo |
+
+## Estrutura
+
+```
+src/
+├── routes/        # Rotas e permissões por papel
+├── controllers/   # Factory CRUD e controllers de cada recurso
+├── services/      # Regras de negócio e transações
+├── schemas/       # Schemas Zod
+├── middlewares/   # Autenticação, autorização, validação e erros
+├── utils/         # Remoção de senha das respostas e erros HTTP
+├── app.ts         # Configuração do Express
+└── server.ts      # Inicialização do servidor
 ```
 
-3. **Configurar banco de dados**
-```bash
-cp .env.example .env
-```
-
-4. **Executar migrations**
-```bash
-npx prisma migrate dev --name init
-```
-
-5. **Configurar o segredo JWT**
-```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-```
-Cole o valor gerado em `JWT_SECRET` no `.env`.
-
-## 🏃 **Executar a API**
-
-```bash
-npm run dev
-```
-
-A API estará disponível em [http://localhost:3000](http://localhost:3000).
-
-## 🔧 **Configurações adicionais**
-
-- **Mudar banco de dados:** altere a variável `DATABASE_URL` no `.env` e rode novamente:
-```bash
-npx prisma migrate dev
-```
-
-- **Reset do banco (apaga todos os dados):**
-```bash
-npx prisma migrate reset
-```
-
-- **Gerar / atualizar Prisma Client:**
-```bash
-npx prisma generate
-```
-
-## 📝 **Estrutura resumida**
-
-- `/src` → código fonte
-- `/src/controllers` → controladores da API
-- `/src/services` → regras de negócio
-- `/src/database` → configuração do Prisma
-- `/prisma/schema.prisma` → modelo do banco de dados
-
-## 💻 **Testando a API**
-
-- `POST /api/auth/login` → autentica e retorna o token JWT
-- `GET /api/auth/me` → dados do usuário autenticado (com token)
-- `GET /api/user` → lista todos os usuários (ADMIN)
-- `POST /api/user` → cria um usuário (role, senha, etc.) (ADMIN)
-- `GET /api/pacient` → lista pacientes (autenticado)
-- `POST /api/appointment` → cria agendamento (ADMIN ou SECRETARY)
-
-💡 Dica: use os exemplos do seed para testar imediatamente.
-
----
-
-## 📝 **Licença**
+## Licença
 
 MIT
