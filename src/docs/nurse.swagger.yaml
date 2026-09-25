@@ -1,0 +1,125 @@
+tags:
+  - name: Nurses
+    description: >
+      Enfermeiros. Leitura (listar/buscar): qualquer usuário autenticado, qualquer papel.
+      Criação, edição e exclusão: somente ADMIN. Cada enfermeiro está vinculado 1:1 a um User
+      com role NURSE (via userId); corenNumber + corenState devem ser únicos em conjunto.
+
+paths:
+  /api/nurse:
+    get:
+      tags: [Nurses]
+      summary: Lista todos os enfermeiros
+      description: Retorna todos os enfermeiros cadastrados, incluindo o usuário vinculado e os agendamentos em que participam.
+      responses:
+        200:
+          description: Lista de enfermeiros.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Nurse"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [Nurses]
+      summary: Cadastra um enfermeiro (somente ADMIN)
+      description: >
+        Vincula um registro Nurse a um User existente. Regras validadas pelo service (não pelo
+        Zod): o userId deve pertencer a um usuário com role NURSE (caso contrário 400) e esse
+        usuário ainda não pode ter um registro de enfermeiro (caso contrário 409). O par
+        corenNumber + corenState deve ser único; se já usado por outro enfermeiro, retorna 409.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateNurseRequest"
+      responses:
+        201:
+          description: Enfermeiro criado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Nurse"
+        400:
+          $ref: "#/components/responses/BadRequest"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        403:
+          $ref: "#/components/responses/Forbidden"
+        409:
+          $ref: "#/components/responses/Conflict"
+
+  /api/nurse/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+    get:
+      tags: [Nurses]
+      summary: Busca um enfermeiro pelo ID
+      responses:
+        200:
+          description: Enfermeiro encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Nurse"
+        400:
+          $ref: "#/components/responses/BadRequest"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        404:
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [Nurses]
+      summary: Atualiza um enfermeiro (somente ADMIN)
+      description: >
+        Todos os campos do corpo são opcionais. O userId vinculado não pode ser alterado por
+        esta rota. Se corenNumber/corenState forem alterados para uma combinação já usada por
+        outro enfermeiro, retorna 409.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateNurseRequest"
+      responses:
+        200:
+          description: Enfermeiro atualizado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Nurse"
+        400:
+          $ref: "#/components/responses/BadRequest"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        403:
+          $ref: "#/components/responses/Forbidden"
+        404:
+          $ref: "#/components/responses/NotFound"
+        409:
+          $ref: "#/components/responses/Conflict"
+    delete:
+      tags: [Nurses]
+      summary: Remove um enfermeiro (somente ADMIN)
+      description: >
+        Remove apenas o registro Nurse (não remove o User vinculado). Os vínculos deste
+        enfermeiro em agendamentos (tabela de junção AppointmentNurse) são removidos
+        automaticamente em cascata pelo banco; os agendamentos em si permanecem, apenas sem
+        este enfermeiro associado.
+      responses:
+        204:
+          description: Enfermeiro removido (sem conteúdo).
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        403:
+          $ref: "#/components/responses/Forbidden"
+        404:
+          $ref: "#/components/responses/NotFound"

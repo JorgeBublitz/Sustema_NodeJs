@@ -6,6 +6,7 @@ const PORT = env.port;
 
 const server = app.listen(PORT, () => {
   console.log(`🚀 Server rodando em http://localhost:${PORT}`);
+  console.log(`📚 Documentação Swagger em http://localhost:${PORT}/api-docs`);
 });
 
 // Graceful shutdown

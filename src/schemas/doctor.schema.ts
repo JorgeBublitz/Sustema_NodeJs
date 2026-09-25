@@ -1,13 +1,14 @@
 import { z } from "zod";
 import { departmentEnum, workStatusEnum, stateBrEnum } from "./enums.schema";
 
-const crmNumber = z.string().min(1, "CRM é obrigatório.");
+const crmNumber = z.string().trim().min(1, "CRM é obrigatório.").max(20, "CRM muito longo.");
+const specialty = z.string().trim().min(1, "Especialidade é obrigatória.").max(120, "Especialidade muito longa.");
 
 export const createDoctorSchema = z.object({
   userId: z.coerce.number().int("userId deve ser um número inteiro.").positive(),
   crmNumber,
   crmState: stateBrEnum,
-  specialty: z.string().min(1, "Especialidade é obrigatória."),
+  specialty,
   department: departmentEnum,
   workStatus: workStatusEnum.optional(),
 });
@@ -15,7 +16,7 @@ export const createDoctorSchema = z.object({
 export const updateDoctorSchema = z.object({
   crmNumber: crmNumber.optional(),
   crmState: stateBrEnum.optional(),
-  specialty: z.string().min(1, "Especialidade é obrigatória.").optional(),
+  specialty: specialty.optional(),
   department: departmentEnum.optional(),
   workStatus: workStatusEnum.optional(),
 });

@@ -1,0 +1,138 @@
+tags:
+  - name: Users
+    description: >
+      Gerenciamento de usuários do sistema. Leitura, criação, edição e exclusão: exclusivo do
+      ADMIN. Um usuário pode carregar um registro Doctor, Nurse ou Secretary vinculado conforme
+      seu role.
+
+paths:
+  /api/user:
+    get:
+      tags: [Users]
+      summary: Lista todos os usuários (somente ADMIN)
+      description: Retorna todos os usuários (sem o campo password), incluindo doctor/nurse/secretary quando existirem.
+      responses:
+        200:
+          description: Lista de usuários (sem senha).
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        403:
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [Users]
+      summary: Cadastra um usuário (somente ADMIN)
+      description: >
+        A senha é armazenada com hash bcrypt (nunca em texto puro, e nunca retornada nas
+        respostas). Conforme o role escolhido, cria automaticamente o registro complementar
+        vinculado (Doctor, Nurse ou Secretary) dentro de uma transação: se doctorData/
+        nurseData/secretaryData não forem enviados (esses campos não são validados pelo Zod
+        nesta rota), o registro é criado com valores temporários únicos por usuário (ex.:
+        crmNumber/corenNumber "TEMP-<id>", crmState/corenState PB) que devem ser corrigidos
+        depois via PUT no recurso específico (/api/doctor, /api/nurse ou /api/secretary).
+        role = ADMIN não cria nenhum registro complementar. E-mail deve ser único; se já
+        cadastrado, retorna 409.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserRequest"
+      responses:
+        201:
+          description: Usuário criado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        400:
+          $ref: "#/components/responses/BadRequest"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        403:
+          $ref: "#/components/responses/Forbidden"
+        409:
+          $ref: "#/components/responses/Conflict"
+
+  /api/user/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+    get:
+      tags: [Users]
+      summary: Busca um usuário pelo ID (somente ADMIN)
+      responses:
+        200:
+          description: Usuário encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        400:
+          $ref: "#/components/responses/BadRequest"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        403:
+          $ref: "#/components/responses/Forbidden"
+        404:
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [Users]
+      summary: Atualiza um usuário (somente ADMIN)
+      description: >
+        Todos os campos são opcionais. Se uma nova senha for enviada, é re-hasheada com bcrypt.
+        Se o role for alterado para um valor diferente do atual, o registro complementar antigo
+        (Doctor/Nurse/Secretary) é excluído e um novo é criado/atualizado conforme o novo role,
+        dentro de uma transação — os mesmos valores temporários descritos no POST se aplicam
+        quando doctorData/nurseData/secretaryData não são enviados. Alterar o e-mail para um já
+        usado por outro usuário retorna 409.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserRequest"
+      responses:
+        200:
+          description: Usuário atualizado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        400:
+          $ref: "#/components/responses/BadRequest"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        403:
+          $ref: "#/components/responses/Forbidden"
+        404:
+          $ref: "#/components/responses/NotFound"
+        409:
+          $ref: "#/components/responses/Conflict"
+    delete:
+      tags: [Users]
+      summary: Remove um usuário (somente ADMIN)
+      description: >
+        Remove em cascata os registros de Doctor, Nurse ou Secretary vinculados a este usuário
+        (relação onDelete Cascade). Não remove agendamentos: se o usuário era um secretário que
+        marcou consultas, o secretaryId dessas consultas é definido como null; se era um médico
+        ou enfermeiro, os vínculos de junção correspondentes são removidos em cascata (os
+        agendamentos em si permanecem).
+      responses:
+        204:
+          description: Usuário removido (sem conteúdo).
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        403:
+          $ref: "#/components/responses/Forbidden"
+        404:
+          $ref: "#/components/responses/NotFound"

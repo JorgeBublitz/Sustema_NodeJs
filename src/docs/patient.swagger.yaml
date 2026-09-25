@@ -1,0 +1,124 @@
+tags:
+  - name: Patients
+    description: >
+      Pacientes. Leitura (listar/buscar): qualquer usuário autenticado, qualquer papel.
+      Criação, edição e exclusão: ADMIN e SECRETARY. cpf, email e phone são únicos entre
+      pacientes (email e phone permitem null/omissão).
+
+paths:
+  /api/pacient:
+    get:
+      tags: [Patients]
+      summary: Lista todos os pacientes
+      description: Retorna todos os pacientes cadastrados, incluindo os agendamentos vinculados.
+      responses:
+        200:
+          description: Lista de pacientes.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Patient"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [Patients]
+      summary: Cadastra um paciente (ADMIN ou SECRETARY)
+      description: >
+        Campos de texto livre (name, address, allergy, drug) são normalizados via Zod: espaços
+        nas pontas são removidos (trim) e cada campo tem um limite máximo de caracteres
+        (name até 120; address, allergy e drug até 300). cpf, email e phone devem ser únicos;
+        violar essa unicidade retorna 409.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePatientRequest"
+      responses:
+        201:
+          description: Paciente criado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Patient"
+        400:
+          $ref: "#/components/responses/BadRequest"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        403:
+          $ref: "#/components/responses/Forbidden"
+        409:
+          $ref: "#/components/responses/Conflict"
+
+  /api/pacient/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+    get:
+      tags: [Patients]
+      summary: Busca um paciente pelo ID
+      responses:
+        200:
+          description: Paciente encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Patient"
+        400:
+          $ref: "#/components/responses/BadRequest"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        404:
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [Patients]
+      summary: Atualiza um paciente (ADMIN ou SECRETARY)
+      description: >
+        Todos os campos do corpo são opcionais, com as mesmas regras de trim/tamanho máximo da
+        criação. Alterar cpf, email ou phone para um valor já usado por outro paciente resulta
+        em 409.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePatientRequest"
+      responses:
+        200:
+          description: Paciente atualizado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Patient"
+        400:
+          $ref: "#/components/responses/BadRequest"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        403:
+          $ref: "#/components/responses/Forbidden"
+        404:
+          $ref: "#/components/responses/NotFound"
+        409:
+          $ref: "#/components/responses/Conflict"
+    delete:
+      tags: [Patients]
+      summary: Remove um paciente (ADMIN ou SECRETARY)
+      description: >
+        Remove também, em cascata, todos os agendamentos vinculados a este paciente (relação
+        onDelete Cascade), incluindo os vínculos de médicos/enfermeiros/secretário nesses
+        agendamentos.
+      responses:
+        204:
+          description: Paciente removido (sem conteúdo).
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        403:
+          $ref: "#/components/responses/Forbidden"
+        404:
+          $ref: "#/components/responses/NotFound"

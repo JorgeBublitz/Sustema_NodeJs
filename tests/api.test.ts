@@ -54,12 +54,25 @@ describe("Usuários e papéis", () => {
     const admin = await loginAdmin();
     const crm = { crmNumber: "999", crmState: "SP", specialty: "Clínica", department: "EMERGENCY" };
     await criarUsuario(admin, "DOCTOR", "a@hospital.com", { doctorData: crm });
-    const user = await criarUsuario(admin, "SECRETARY", "b@hospital.com");
+    // usuário já é DOCTOR (e já tem registro de médico criado junto com o usuário);
+    // POST /api/doctor para ele deve ser rejeitado com 409 (registro duplicado).
+    const user = await criarUsuario(admin, "DOCTOR", "b@hospital.com");
     await api()
       .post("/api/doctor")
       .set(admin)
       .send({ userId: user.id, ...crm })
       .expect(409);
+  });
+
+  it("rejeita criação de médico para usuário com role diferente de DOCTOR", async () => {
+    const admin = await loginAdmin();
+    const crm = { crmNumber: "111", crmState: "RJ", specialty: "Clínica", department: "EMERGENCY" };
+    const user = await criarUsuario(admin, "SECRETARY", "c@hospital.com");
+    await api()
+      .post("/api/doctor")
+      .set(admin)
+      .send({ userId: user.id, ...crm })
+      .expect(400);
   });
 
   it("somente ADMIN gerencia usuários", async () => {
@@ -140,14 +153,14 @@ describe("Agendamentos", () => {
     expect(agendaMedico.body.appointments[0].appointment.notes).toBe("Retorno");
   });
 
-  it("aceita agendamento sem médicos (antes quebrava com 500)", async () => {
+  it("rejeita agendamento sem médicos", async () => {
     const admin = await loginAdmin();
     const pac = await api().post("/api/pacient").set(admin).send(paciente()).expect(201);
     await api()
       .post("/api/appointment")
       .set(admin)
       .send({ dateTime: "2026-11-10T09:00:00Z", patientId: pac.body.id })
-      .expect(201);
+      .expect(400);
   });
 
   it("retorna 400 para paciente inexistente e 404 ao remover agendamento inexistente", async () => {
@@ -162,11 +175,12 @@ describe("Agendamentos", () => {
 
   it("remover paciente remove os agendamentos dele", async () => {
     const admin = await loginAdmin();
+    const medico = await criarUsuario(admin, "DOCTOR", "doc2@hospital.com");
     const pac = await api().post("/api/pacient").set(admin).send(paciente()).expect(201);
     await api()
       .post("/api/appointment")
       .set(admin)
-      .send({ dateTime: "2026-11-10T09:00:00Z", patientId: pac.body.id })
+      .send({ dateTime: "2026-11-10T09:00:00Z", patientId: pac.body.id, doctorIds: [medico.doctor.id] })
       .expect(201);
 
     await api().delete(`/api/pacient/${pac.body.id}`).set(admin).expect(204);

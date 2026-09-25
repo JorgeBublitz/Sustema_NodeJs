@@ -1,5 +1,6 @@
 import prisma from "../database/prismaClient";
 import type { StateBR, Prisma, Department, WorkStatus } from "../generated/prisma";
+import { HttpError } from "../utils/http-error";
 
 // Tipo com relacionamentos
 export type DoctorWithRelations = Prisma.DoctorGetPayload<{
@@ -21,6 +22,19 @@ const doctorService = {
     },
 
     async createDoctor(data: { userId: number; workStatus: WorkStatus; crmNumber: string; crmState: StateBR; specialty: string; department: Department }): Promise<DoctorWithRelations> {
+        const user = await prisma.user.findUnique({ where: { id: data.userId } });
+        if (!user) {
+            throw new HttpError(400, "Usuário não encontrado.");
+        }
+        if (user.role !== "DOCTOR") {
+            throw new HttpError(400, "O usuário informado não possui o cargo (role) de DOCTOR.");
+        }
+
+        const existingDoctor = await prisma.doctor.findUnique({ where: { userId: data.userId } });
+        if (existingDoctor) {
+            throw new HttpError(409, "Já existe um registro de médico para este usuário.");
+        }
+
         return prisma.doctor.create({
             data: {
                 userId: data.userId,

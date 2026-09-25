@@ -5,6 +5,7 @@ import rateLimit from "express-rate-limit";
 import routes from "./routes/indexRoutes";
 import { env } from "./config/env";
 import { errorHandler } from "./middlewares/errorHandler";
+import { swaggerDocs } from "./config/swagger";
 
 const app: Application = express();
 
@@ -38,6 +39,9 @@ app.use("/api", globalLimiter);
 app.get("/health", (_req: Request, res: Response) => {
   res.json({ status: "ok" });
 });
+
+// Documentação Swagger
+swaggerDocs(app);
 
 // Rotas
 app.use("/api", routes);

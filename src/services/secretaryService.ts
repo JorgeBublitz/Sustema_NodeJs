@@ -1,6 +1,7 @@
 import prisma from "../database/prismaClient";
 import type { Prisma } from "../generated/prisma";
 import type { Shift, WorkStatus } from "../generated/prisma";
+import { HttpError } from "../utils/http-error";
 
 export type SecretaryWithRelations = Prisma.SecretaryGetPayload<{
     include: { user: true; appointments: true };
@@ -25,6 +26,19 @@ const secretaryService = {
         shift: Shift;
         workStatus: WorkStatus;
     }): Promise<SecretaryWithRelations> {
+        const user = await prisma.user.findUnique({ where: { id: data.userId } });
+        if (!user) {
+            throw new HttpError(400, "Usuário não encontrado.");
+        }
+        if (user.role !== "SECRETARY") {
+            throw new HttpError(400, "O usuário informado não possui o cargo (role) de SECRETARY.");
+        }
+
+        const existingSecretary = await prisma.secretary.findUnique({ where: { userId: data.userId } });
+        if (existingSecretary) {
+            throw new HttpError(409, "Já existe um registro de secretário para este usuário.");
+        }
+
         const secretary = await prisma.secretary.create({
             data: {
                 userId: data.userId,
@@ -49,10 +63,10 @@ const secretaryService = {
     },
 
     async deleteSecretary(id: number): Promise<SecretaryWithRelations> {
-        const secretary = await this.getSecretaryById(id);
-        if (!secretary) throw new Error(`Secretário com ID ${id} não encontrado.`);
-        await prisma.secretary.delete({ where: { id } });
-        return secretary;
+        return prisma.secretary.delete({
+            where: { id },
+            include: { user: true, appointments: true },
+        });
     },
 };
 

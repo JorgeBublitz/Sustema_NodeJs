@@ -1,0 +1,124 @@
+tags:
+  - name: Appointments
+    description: >
+      Agendamentos/consultas. Leitura (listar/buscar): qualquer usuário autenticado, qualquer
+      papel. Criação, edição e exclusão: ADMIN e SECRETARY. status (padrão SCHEDULED) e type
+      (padrão CHECKUP) são definidos automaticamente e não podem ser enviados no corpo da
+      requisição.
+
+paths:
+  /api/appointment:
+    get:
+      tags: [Appointments]
+      summary: Lista todos os agendamentos
+      description: Retorna todos os agendamentos, incluindo paciente, secretário, e médicos/enfermeiros vinculados.
+      responses:
+        200:
+          description: Lista de agendamentos.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Appointment"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [Appointments]
+      summary: Cadastra um agendamento (ADMIN ou SECRETARY)
+      description: >
+        Exige ao menos um doctorId em doctorIds; nurseIds e secretaryId são opcionais. notes é
+        opcional, com trim e limite de 1000 caracteres via Zod. Nenhuma verificação prévia de
+        existência é feita para patientId, doctorIds, nurseIds ou secretaryId: se algum ID
+        referenciar um registro inexistente, o Prisma rejeita a chave estrangeira e a API
+        responde 400 (não 404).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAppointmentRequest"
+      responses:
+        201:
+          description: Agendamento criado com status SCHEDULED e type CHECKUP.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Appointment"
+        400:
+          $ref: "#/components/responses/BadRequest"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        403:
+          $ref: "#/components/responses/Forbidden"
+
+  /api/appointment/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+    get:
+      tags: [Appointments]
+      summary: Busca um agendamento pelo ID
+      responses:
+        200:
+          description: Agendamento encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Appointment"
+        400:
+          $ref: "#/components/responses/BadRequest"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        404:
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [Appointments]
+      summary: Atualiza um agendamento (ADMIN ou SECRETARY)
+      description: >
+        Todos os campos do corpo são opcionais. Enviar doctorIds e/ou nurseIds substitui
+        completamente os vínculos atuais (remove todas as linhas de junção existentes e cria as
+        novas a partir da lista enviada); omitir o campo mantém os vínculos atuais inalterados.
+        Assim como na criação, referências inválidas (patientId, doctorIds, nurseIds,
+        secretaryId inexistentes) resultam em 400, não 404.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAppointmentRequest"
+      responses:
+        200:
+          description: Agendamento atualizado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Appointment"
+        400:
+          $ref: "#/components/responses/BadRequest"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        403:
+          $ref: "#/components/responses/Forbidden"
+        404:
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Appointments]
+      summary: Remove um agendamento (ADMIN ou SECRETARY)
+      description: >
+        Remove também, em cascata, as linhas de junção com médicos e enfermeiros vinculados a
+        este agendamento (relação onDelete Cascade). Não afeta o paciente, os médicos ou os
+        enfermeiros em si.
+      responses:
+        204:
+          description: Agendamento removido (sem conteúdo).
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        403:
+          $ref: "#/components/responses/Forbidden"
+        404:
+          $ref: "#/components/responses/NotFound"

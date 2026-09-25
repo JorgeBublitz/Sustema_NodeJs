@@ -1,0 +1,457 @@
+components:
+  responses:
+    BadRequest:
+      description: >
+        Requisição inválida. Ocorre em dois cenários: (1) falha de validação do Zod no corpo,
+        parâmetros ou query (formato, tipo, tamanho ou enum incorretos) — nesse caso a resposta
+        inclui um array `errors` com o campo e a mensagem de cada problema; ou (2) violação de
+        regra de negócio detectada pelo controller/service (ex.: `userId` aponta para um usuário
+        cujo `role` não corresponde ao recurso sendo criado, ou faz referência a um registro
+        relacionado que não existe) — nesse caso apenas `message` é retornado.
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - $ref: "#/components/schemas/ErroValidacao"
+              - $ref: "#/components/schemas/Erro"
+    Unauthorized:
+      description: >
+        Não autenticado: o header `Authorization: Bearer <token>` está ausente, o token é
+        inválido/expirado, ou o usuário associado ao token não existe mais.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Erro"
+    Forbidden:
+      description: >
+        Autenticado, porém o papel (role) do usuário não está na lista de papéis permitidos
+        para esta operação.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Erro"
+    NotFound:
+      description: Nenhum registro foi encontrado para o ID informado.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Erro"
+    Conflict:
+      description: >
+        Conflito de unicidade: já existe um registro com o(s) mesmo(s) valor(es) em um campo
+        único (ex.: e-mail, CRM, COREN, CPF, telefone, ou vínculo userId já usado).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Erro"
+
+  schemas:
+    Erro:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Registro não encontrado.
+    ErroValidacao:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Dados inválidos.
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              campo:
+                type: string
+                example: email
+              mensagem:
+                type: string
+                example: E-mail inválido.
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email, example: admin@example.com }
+        password: { type: string, example: "123456" }
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        user:
+          $ref: "#/components/schemas/User"
+
+    Gender:
+      type: string
+      enum: [MALE, FEMALE]
+    Role:
+      type: string
+      enum: [ADMIN, SECRETARY, DOCTOR, NURSE]
+    Department:
+      type: string
+      enum: [EMERGENCY, SURGERY, ICU, WARD]
+    WorkStatus:
+      type: string
+      enum: [WORKING, VACATION, NOT_WORKING, ON_LEAVE, SICK_LEAVE]
+    NurseLevel:
+      type: string
+      enum: [ASSISTANT, TECHNICIAN, GRADUATE]
+    Shift:
+      type: string
+      enum: [MORNING, AFTERNOON, NIGHT]
+    PatientStatus:
+      type: string
+      enum: [IN_SURGERY, REST, WAITING]
+    AppointmentStatus:
+      type: string
+      enum: [SCHEDULED, CANCELLED, FINISHED]
+    AppointmentType:
+      type: string
+      enum: [CHECKUP, SURGERY, FOLLOW_UP]
+    StateBR:
+      type: string
+      description: Sigla de estado brasileiro (UF).
+      example: SP
+
+    User:
+      type: object
+      description: Usuário do sistema (sem o campo password). Pode incluir os dados de doctor/nurse/secretary quando existirem.
+      properties:
+        id: { type: integer, example: 1 }
+        name: { type: string, example: "System Admin" }
+        age: { type: integer, example: 30 }
+        gender: { $ref: "#/components/schemas/Gender" }
+        email: { type: string, format: email, example: admin@example.com }
+        role: { $ref: "#/components/schemas/Role" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        doctor:
+          nullable: true
+          $ref: "#/components/schemas/Doctor"
+        nurse:
+          nullable: true
+          $ref: "#/components/schemas/Nurse"
+        secretary:
+          nullable: true
+          $ref: "#/components/schemas/Secretary"
+    CreateUserRequest:
+      type: object
+      required: [name, age, gender, email, password, role]
+      properties:
+        name: { type: string, minLength: 2, example: "Dra. Ana Lima" }
+        age: { type: integer, minimum: 0, example: 34 }
+        gender: { $ref: "#/components/schemas/Gender" }
+        email: { type: string, format: email, example: ana.lima@example.com }
+        password: { type: string, minLength: 6, example: "senha123" }
+        role: { $ref: "#/components/schemas/Role" }
+        doctorData:
+          type: object
+          description: >
+            Usado quando role = DOCTOR para preencher o registro Doctor vinculado (não validado
+            por Zod nesta rota; se omitido, o service grava valores temporários como
+            crmNumber "TEMP-<id>", crmState PB, specialty "General" e department EMERGENCY,
+            que deverão ser corrigidos depois via PUT /api/doctor/{id}).
+          properties:
+            crmNumber: { type: string, example: "154873-SP" }
+            crmState: { $ref: "#/components/schemas/StateBR" }
+            specialty: { type: string, example: "Cardiologia" }
+            department: { $ref: "#/components/schemas/Department" }
+            workStatus: { $ref: "#/components/schemas/WorkStatus" }
+        nurseData:
+          type: object
+          description: >
+            Usado quando role = NURSE (mesmo comportamento de valores temporários descrito em
+            doctorData quando omitido: corenNumber "TEMP-<id>", corenState PB, level ASSISTANT,
+            department WARD).
+          properties:
+            corenNumber: { type: string, example: "245691-SP" }
+            corenState: { $ref: "#/components/schemas/StateBR" }
+            level: { $ref: "#/components/schemas/NurseLevel" }
+            department: { $ref: "#/components/schemas/Department" }
+            experience: { type: integer, minimum: 0, default: 0, example: 4 }
+            specialization: { type: string, nullable: true, example: "UTI Neonatal" }
+            workStatus: { $ref: "#/components/schemas/WorkStatus" }
+        secretaryData:
+          type: object
+          description: Usado quando role = SECRETARY.
+          properties:
+            shift: { $ref: "#/components/schemas/Shift" }
+            workStatus: { $ref: "#/components/schemas/WorkStatus" }
+    UpdateUserRequest:
+      type: object
+      description: Todos os campos são opcionais.
+      properties:
+        name: { type: string, minLength: 2 }
+        age: { type: integer, minimum: 0 }
+        gender: { $ref: "#/components/schemas/Gender" }
+        email: { type: string, format: email }
+        password: { type: string, minLength: 6 }
+        role: { $ref: "#/components/schemas/Role" }
+        doctorData: { type: object }
+        nurseData: { type: object }
+        secretaryData: { type: object }
+
+    Doctor:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        userId: { type: integer, example: 2 }
+        workStatus: { $ref: "#/components/schemas/WorkStatus" }
+        crmNumber: { type: string, example: "154873-SP" }
+        crmState: { $ref: "#/components/schemas/StateBR" }
+        specialty: { type: string, example: "Cardiologia" }
+        department: { $ref: "#/components/schemas/Department" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        user:
+          nullable: true
+          $ref: "#/components/schemas/User"
+    CreateDoctorRequest:
+      type: object
+      required: [userId, crmNumber, crmState, specialty, department]
+      properties:
+        userId:
+          type: integer
+          minimum: 1
+          example: 2
+          description: >
+            Deve apontar para um User existente com role DOCTOR; caso contrário a API responde
+            400 ("O usuário informado não possui o cargo (role) de DOCTOR."). Se o usuário já
+            tiver um registro de médico, responde 409.
+        crmNumber: { type: string, maxLength: 20, example: "154873-SP", description: "Trim aplicado; até 20 caracteres." }
+        crmState: { $ref: "#/components/schemas/StateBR" }
+        specialty: { type: string, maxLength: 120, example: "Cardiologia" }
+        department: { $ref: "#/components/schemas/Department" }
+        workStatus: { $ref: "#/components/schemas/WorkStatus" }
+    UpdateDoctorRequest:
+      type: object
+      description: >
+        Todos os campos são opcionais. Alterar crmNumber/crmState para uma combinação já usada
+        por outro médico resulta em 409.
+      properties:
+        crmNumber: { type: string, maxLength: 20, example: "154873-SP" }
+        crmState: { $ref: "#/components/schemas/StateBR" }
+        specialty: { type: string, maxLength: 120, example: "Cardiologia" }
+        department: { $ref: "#/components/schemas/Department" }
+        workStatus: { $ref: "#/components/schemas/WorkStatus" }
+
+    Nurse:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        userId: { type: integer, example: 5 }
+        workStatus: { $ref: "#/components/schemas/WorkStatus" }
+        corenNumber: { type: string, example: "245691-SP" }
+        corenState: { $ref: "#/components/schemas/StateBR" }
+        level: { $ref: "#/components/schemas/NurseLevel" }
+        department: { $ref: "#/components/schemas/Department" }
+        experience: { type: integer, example: 4 }
+        specialization: { type: string, nullable: true, example: "UTI Neonatal" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        user:
+          nullable: true
+          $ref: "#/components/schemas/User"
+    CreateNurseRequest:
+      type: object
+      required: [userId, corenNumber, corenState, level, department]
+      properties:
+        userId:
+          type: integer
+          minimum: 1
+          example: 5
+          description: >
+            Deve apontar para um User existente com role NURSE; caso contrário a API responde
+            400 ("O usuário informado não possui o cargo (role) de NURSE."). Se o usuário já
+            tiver um registro de enfermeiro, responde 409.
+        corenNumber: { type: string, maxLength: 20, example: "245691-SP", description: "Trim aplicado; até 20 caracteres." }
+        corenState: { $ref: "#/components/schemas/StateBR" }
+        level: { $ref: "#/components/schemas/NurseLevel" }
+        department: { $ref: "#/components/schemas/Department" }
+        experience: { type: integer, minimum: 0, default: 0, example: 4, description: "Não pode ser negativo; padrão 0." }
+        specialization: { type: string, maxLength: 120, example: "UTI Neonatal", description: "Opcional; trim aplicado; até 120 caracteres." }
+        workStatus: { $ref: "#/components/schemas/WorkStatus" }
+    UpdateNurseRequest:
+      type: object
+      description: >
+        Todos os campos são opcionais. Alterar corenNumber/corenState para uma combinação já
+        usada por outro enfermeiro resulta em 409.
+      properties:
+        corenNumber: { type: string, maxLength: 20, example: "245691-SP" }
+        corenState: { $ref: "#/components/schemas/StateBR" }
+        level: { $ref: "#/components/schemas/NurseLevel" }
+        department: { $ref: "#/components/schemas/Department" }
+        experience: { type: integer, minimum: 0, example: 5 }
+        specialization: { type: string, maxLength: 120, example: "UTI Neonatal" }
+        workStatus: { $ref: "#/components/schemas/WorkStatus" }
+
+    Secretary:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        userId: { type: integer, example: 8 }
+        workStatus: { $ref: "#/components/schemas/WorkStatus" }
+        shift: { $ref: "#/components/schemas/Shift" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        user:
+          nullable: true
+          $ref: "#/components/schemas/User"
+    CreateSecretaryRequest:
+      type: object
+      required: [userId, shift]
+      properties:
+        userId:
+          type: integer
+          minimum: 1
+          example: 8
+          description: >
+            Deve apontar para um User existente com role SECRETARY; caso contrário a API
+            responde 400 ("O usuário informado não possui o cargo (role) de SECRETARY."). Se o
+            usuário já tiver um registro de secretário, responde 409.
+        shift: { $ref: "#/components/schemas/Shift" }
+        workStatus: { $ref: "#/components/schemas/WorkStatus" }
+    UpdateSecretaryRequest:
+      type: object
+      description: >
+        Todos os campos são opcionais. Não é possível alterar o userId vinculado; como nenhum
+        campo aqui é único, esta operação nunca retorna 409.
+      properties:
+        shift: { $ref: "#/components/schemas/Shift" }
+        workStatus: { $ref: "#/components/schemas/WorkStatus" }
+
+    Patient:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        name: { type: string, example: "Maria Oliveira Santos" }
+        age: { type: integer, example: 60 }
+        cpf: { type: string, example: "123.456.789-09" }
+        email: { type: string, format: email, nullable: true, example: maria.santos@example.com }
+        phone: { type: string, nullable: true, example: "(11) 99999-0000" }
+        gender: { $ref: "#/components/schemas/Gender" }
+        birthDate: { type: string, format: date-time, example: "1965-03-22T00:00:00.000Z" }
+        address: { type: string, nullable: true, example: "Rua das Flores, 123 - São Paulo/SP" }
+        allergy: { type: string, nullable: true, example: "Penicilina" }
+        drug: { type: string, nullable: true, example: "Losartana 50mg 1x/dia" }
+        condition: { $ref: "#/components/schemas/PatientStatus" }
+        location: { $ref: "#/components/schemas/Department" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    CreatePatientRequest:
+      type: object
+      required: [name, age, cpf, gender, birthDate, condition, location]
+      properties:
+        name: { type: string, minLength: 2, maxLength: 120, example: "Maria Oliveira Santos", description: "Trim aplicado; 2 a 120 caracteres." }
+        age: { type: integer, minimum: 0, example: 45 }
+        cpf: { type: string, minLength: 11, maxLength: 14, example: "123.456.789-09" }
+        email: { type: string, format: email, example: maria.santos@example.com }
+        phone: { type: string, minLength: 8, example: "(11) 99999-0000" }
+        gender: { $ref: "#/components/schemas/Gender" }
+        birthDate: { type: string, format: date, example: "1965-03-22" }
+        address: { type: string, maxLength: 200, example: "Rua das Flores, 123 - São Paulo/SP" }
+        allergy: { type: string, maxLength: 300, example: "Penicilina", description: "Opcional; trim aplicado; até 300 caracteres." }
+        drug: { type: string, maxLength: 300, example: "Losartana 50mg 1x/dia", description: "Opcional; trim aplicado; até 300 caracteres." }
+        condition: { $ref: "#/components/schemas/PatientStatus" }
+        location: { $ref: "#/components/schemas/Department" }
+    UpdatePatientRequest:
+      type: object
+      description: >
+        Todos os campos são opcionais. Alterar cpf, email ou phone para um valor já usado por
+        outro paciente resulta em 409.
+      properties:
+        name: { type: string, minLength: 2, maxLength: 120, example: "Maria Oliveira Santos" }
+        age: { type: integer, minimum: 0, example: 46 }
+        cpf: { type: string, minLength: 11, maxLength: 14, example: "123.456.789-09" }
+        email: { type: string, format: email, example: maria.santos@example.com }
+        phone: { type: string, minLength: 8, example: "(11) 99999-0000" }
+        gender: { $ref: "#/components/schemas/Gender" }
+        birthDate: { type: string, format: date, example: "1965-03-22" }
+        address: { type: string, maxLength: 200, example: "Rua das Flores, 123 - São Paulo/SP" }
+        allergy: { type: string, maxLength: 300, example: "Penicilina" }
+        drug: { type: string, maxLength: 300, example: "Losartana 50mg 1x/dia" }
+        condition: { $ref: "#/components/schemas/PatientStatus" }
+        location: { $ref: "#/components/schemas/Department" }
+
+    Appointment:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        dateTime: { type: string, format: date-time, example: "2026-10-01T14:00:00.000Z" }
+        status:
+          allOf: [{ $ref: "#/components/schemas/AppointmentStatus" }]
+          description: >
+            Não é aceito no corpo de criação/atualização; a API sempre define SCHEDULED na
+            criação. Não há endpoint para alterá-lo diretamente.
+        type:
+          allOf: [{ $ref: "#/components/schemas/AppointmentType" }]
+          description: >
+            Não é aceito no corpo de criação/atualização; a API sempre define CHECKUP na criação.
+        notes: { type: string, nullable: true, example: "Paciente relatou dor lombar há 3 dias." }
+        patientId: { type: integer, example: 1 }
+        secretaryId: { type: integer, nullable: true, example: 1 }
+        patient:
+          nullable: true
+          $ref: "#/components/schemas/Patient"
+        secretary:
+          nullable: true
+          $ref: "#/components/schemas/Secretary"
+        doctors:
+          type: array
+          description: Junção com os médicos vinculados à consulta.
+          items:
+            type: object
+            properties:
+              doctorId: { type: integer }
+              doctor:
+                $ref: "#/components/schemas/Doctor"
+        nurses:
+          type: array
+          description: Junção com os enfermeiros vinculados à consulta.
+          items:
+            type: object
+            properties:
+              nurseId: { type: integer }
+              nurse:
+                $ref: "#/components/schemas/Nurse"
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    CreateAppointmentRequest:
+      type: object
+      required: [dateTime, doctorIds, patientId]
+      properties:
+        dateTime: { type: string, format: date-time, example: "2026-10-01T14:00:00.000Z" }
+        doctorIds:
+          type: array
+          description: Pelo menos um ID de médico é obrigatório.
+          items: { type: integer }
+          example: [1]
+        nurseIds:
+          type: array
+          items: { type: integer }
+          example: [1]
+        patientId: { type: integer, example: 1 }
+        secretaryId: { type: integer, example: 1 }
+        notes: { type: string, maxLength: 1000, example: "Paciente relatou dor lombar há 3 dias.", description: "Opcional; trim aplicado; até 1000 caracteres." }
+    UpdateAppointmentRequest:
+      type: object
+      description: >
+        Todos os campos são opcionais. Informar doctorIds/nurseIds substitui completamente os
+        vínculos atuais (as linhas de junção existentes são removidas e recriadas com a nova
+        lista).
+      properties:
+        dateTime: { type: string, format: date-time, example: "2026-10-02T09:30:00.000Z" }
+        doctorIds:
+          type: array
+          items: { type: integer }
+          example: [1]
+        nurseIds:
+          type: array
+          items: { type: integer }
+          example: [2]
+        patientId: { type: integer, example: 1 }
+        secretaryId: { type: integer, example: 1 }
+        notes: { type: string, maxLength: 1000, example: "Retorno agendado para reavaliação." }

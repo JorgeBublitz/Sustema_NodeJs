@@ -1,0 +1,58 @@
+tags:
+  - name: Auth
+    description: >
+      Login e perfil do usuário autenticado. O login é público e devolve um JWT (payload:
+      `sub` = id do usuário, `role`); use o botão Authorize com o valor desse token para
+      acessar as demais rotas. /me exige um token válido, mas não exige nenhum papel específico.
+
+paths:
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      summary: Autentica um usuário e retorna um token JWT
+      description: >
+        Rota pública (não exige token). Busca o usuário pelo e-mail (normalizado para
+        minúsculas/trim) e compara a senha com bcrypt. Por segurança, não revela se o problema
+        foi o e-mail inexistente ou a senha incorreta — ambos retornam a mesma mensagem genérica
+        "Credenciais inválidas." com status 401. Em caso de sucesso, retorna o token e o usuário
+        (sem o campo password), incluindo doctor/nurse/secretary quando existirem. Responde 400
+        quando "email"/"password" estão ausentes ou não são strings.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        200:
+          description: Login realizado com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        400:
+          $ref: "#/components/responses/BadRequest"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/auth/me:
+    get:
+      tags: [Auth]
+      summary: Retorna os dados do usuário autenticado
+      description: >
+        Leitura permitida para qualquer usuário autenticado, independente do papel (role).
+        Retorna o usuário (sem senha) incluindo doctor/nurse/secretary quando existirem. Responde
+        404 no caso raro em que o usuário referenciado pelo token foi removido após a emissão do
+        token (o token em si continua válido até expirar, mas o usuário não existe mais).
+      responses:
+        200:
+          description: Usuário autenticado (sem senha), incluindo doctor/nurse/secretary quando existir.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        404:
+          $ref: "#/components/responses/NotFound"
